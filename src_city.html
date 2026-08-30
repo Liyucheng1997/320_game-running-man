@@ -1,0 +1,679 @@
+<title>黄雀在后·迷城寻踪</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;900&display=swap">
+<style>
+  :root{
+    --paper:#EFE6D0; --ink:#2A241B; --soft:#6A5F48; --seal:#A63325;
+    --gold:#C99A3D; --line:#C9BB98; --card:#F6EFDE;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; height:100%; overflow:hidden; background:#20180F}
+  body{font-family:"Noto Serif SC",'Songti SC',SimSun,serif; color:var(--ink)}
+  #c3d{position:fixed; inset:0; display:block; touch-action:none}
+  .brush{font-family:"Ma Shan Zheng","Noto Serif SC",serif; font-weight:400}
+
+  #hud{position:fixed; top:0; left:0; right:0; display:none; justify-content:space-between; align-items:flex-start; padding:10px 14px; z-index:5; pointer-events:none}
+  .hud-box{background:rgba(32,24,15,.75); color:var(--paper); padding:8px 14px; font-size:14px; border:1px solid rgba(239,230,208,.25); max-width:62vw}
+  #quest-t{color:#E8C66B; letter-spacing:.05em}
+  #quest-d{font-size:13px; opacity:.85; margin-top:2px}
+  #hud-right{pointer-events:auto; text-align:right}
+  #hud-right .jbtn{background:none; border:1px solid var(--paper); color:var(--paper); padding:3px 12px; font-size:13px; cursor:pointer; font-family:inherit; margin-top:6px}
+  #toast{position:fixed; top:18%; left:0; right:0; text-align:center; z-index:6; pointer-events:none; font-size:20px; color:#FFF3DC; text-shadow:0 2px 8px #000; opacity:0; transition:opacity .3s; letter-spacing:.08em}
+  #prompt{position:fixed; bottom:120px; left:0; right:0; text-align:center; z-index:6; pointer-events:none; display:none; color:#FFF3DC; text-shadow:0 2px 6px #000; font-size:16px}
+  #prompt b{color:#E8C66B}
+
+  /* 虚拟摇杆 + 互动键 */
+  #stick{position:fixed; left:26px; bottom:26px; width:110px; height:110px; border-radius:50%; border:2px solid rgba(239,230,208,.35); background:rgba(32,24,15,.3); display:none; z-index:7}
+  #knob{position:absolute; left:35px; top:35px; width:40px; height:40px; border-radius:50%; background:rgba(239,230,208,.55)}
+  #act{position:fixed; right:30px; bottom:34px; width:76px; height:76px; border-radius:50%; border:2px solid rgba(239,230,208,.5); background:rgba(166,51,37,.75); color:#FFF3DC; font-size:15px; display:none; z-index:7; font-family:inherit; letter-spacing:.1em}
+  #act:disabled{opacity:.35}
+
+  /* 剧情浮层 */
+  #ui{position:fixed; inset:0; z-index:10; display:none; overflow-y:auto; background:rgba(26,20,12,.62)}
+  .sheet{max-width:620px; margin:4vh auto; background:var(--paper); border:2px solid var(--ink); padding:22px 24px 26px; box-shadow:0 10px 40px rgba(0,0,0,.5)}
+  .sheet h1{font-size:48px; margin:.1em 0; letter-spacing:.05em; line-height:1.25}
+  .sheet h1 span{color:var(--seal)}
+  .kicker{letter-spacing:.3em; font-size:12px; color:var(--gold); margin:0}
+  .tag{display:inline-block; border:1px solid var(--seal); color:var(--seal); font-size:12px; padding:0 8px; letter-spacing:.15em; margin-bottom:8px}
+  .muted{color:var(--soft)} .seal-t{color:var(--seal)}
+  .sheet p{line-height:1.85; margin:.6em 0}
+  .letter{background:var(--card); border:1px solid var(--line); padding:14px 16px; font-size:15px; margin:10px 0}
+  .clue-pop{border:1px solid var(--seal); background:var(--card); padding:10px 14px; margin:10px 0; font-size:15px}
+  .clue-pop::before{content:"🔎 记入手册"; display:block; color:var(--seal); font-size:12px; letter-spacing:.2em; margin-bottom:2px}
+  .dlg{background:#EDE2C6; border-left:3px solid var(--seal); padding:10px 14px; margin:8px 0; font-size:15px}
+  .dlg .who{color:var(--seal); font-weight:600}
+  .sheet button{font-family:inherit; font-size:17px; cursor:pointer; background:var(--ink); color:var(--paper); border:none; padding:11px 26px; margin:8px 8px 0 0; letter-spacing:.12em}
+  .sheet button:hover{background:var(--seal)}
+  .sheet button.alt{background:var(--card); color:var(--ink); border:1px solid var(--ink)}
+  .sheet button:disabled{opacity:.4}
+  .opt{display:block; width:100%; text-align:left; background:var(--card); color:var(--ink); border:1px solid var(--line); margin:8px 0; padding:11px 14px; font-size:15px}
+  .opt:hover{border-color:var(--seal); background:#EDE2C6; color:var(--ink)}
+  .opt.sel{border-color:var(--seal); background:#EDE2C6}
+  .center{text-align:center}
+  .keys{font-size:13px; color:var(--soft); border-top:1px dashed var(--line); margin-top:14px; padding-top:10px}
+  kbd{background:var(--ink); color:var(--paper); padding:1px 7px; font-family:inherit; font-size:12px; margin:0 2px}
+  .code-in{font-size:28px; width:7em; text-align:center; letter-spacing:.4em; font-family:inherit; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:6px}
+  #journal{position:fixed; inset:0; background:rgba(26,20,12,.6); display:none; z-index:20}
+  #journal .book{max-width:560px; margin:5vh auto; max-height:84vh; overflow-y:auto; background:var(--paper); border:2px solid var(--ink); padding:20px 22px}
+  #journal .entry{border-bottom:1px dashed var(--line); padding:8px 0; font-size:14px; line-height:1.7}
+  #journal .entry b{color:var(--seal)}
+</style>
+
+<canvas id="c3d"></canvas>
+<div id="hud">
+  <div class="hud-box"><div id="quest-t">任务</div><div id="quest-d"></div></div>
+  <div class="hud-box" id="hud-right">🪙 <b id="hud-coin" style="color:#E8C66B">0</b><br><button class="jbtn" onclick="toggleJournal(true)">📖 调查手册</button></div>
+</div>
+<div id="toast"></div>
+<div id="prompt"></div>
+<div id="stick"><div id="knob"></div></div>
+<button id="act">调查</button>
+<div id="ui"></div>
+<div id="journal" onclick="if(event.target===this)toggleJournal(false)">
+  <div class="book"><h2 class="brush" style="margin-top:0">白一鸣的调查手册</h2><div id="journal-list"></div>
+  <p class="center"><button class="alt" style="font-family:inherit;font-size:15px;cursor:pointer;background:var(--card);color:var(--ink);border:1px solid var(--ink);padding:8px 20px" onclick="toggleJournal(false)">合上手册</button></p></div>
+</div>
+
+<script>/*__THREE__*/</script>
+<script>
+"use strict";
+/* ================= 剧情数据 ================= */
+const NPCS=[
+  {id:'shen', name:'沈见秋', emoji:'🧑‍🎨', job:'德昌号继承人·设计师', tag:'沈', color:0x6B4F8A, skill:'认得爷爷的笔迹和老宅的暗记', exit:'west',  exitWhy:'他的设计工作室在西桥头'},
+  {id:'gu',   name:'顾曼芝', emoji:'📷', job:'美食博主', tag:'顾', color:0xB05672, skill:'三句话能让陌生人掏心窝子', exit:'east', exitWhy:'东市人多，她最会往人堆里钻'},
+  {id:'tang', name:'汤圆圆', emoji:'🥮', job:'甜品店老板娘', tag:'汤', color:0xC98A3D, skill:'祖传的点心手艺，认得老德昌的火漆', exit:'east', exitWhy:'她的铺子就开在东市'},
+  {id:'zheng',name:'郑野',   emoji:'📦', job:'快递站长·跑腿王', tag:'郑', color:0x4E7A55, skill:'老街活地图，哪条巷子他都门儿清', exit:'north', exitWhy:'北巷小道七拐八绕，只有跑腿的抄得动'},
+  {id:'lin',  name:'林晚',   emoji:'💼', job:'味莱投资顾问', tag:'林', color:0x3E6B8A, skill:'看得懂台账、档案和数字', exit:'west', exitWhy:'她的车停在西桥停车场'},
+];
+const byId=id=>NPCS.find(n=>n.id===id);
+const TRUE_OBS=[
+  '离开邮局时你回头看了一眼：{M}落在最后，对着你手里的信举起手机——那不是拍风景的角度。',
+  '公园歇脚时，{M}的手机亮了一下：一条六位数的到账通知，付款方名称被拇指飞快盖住。',
+  '书店外的巷口，{M}压低声音打电话："东西……快到手了。"看见你出来，立刻改口聊天气。',
+];
+const HERRINGS={
+  shen:'沈见秋趁人不备，把一张对折的旧纸塞回内袋，神色慌张。（赛后他坦白：那是收养公证书——他是养子，怕失去继承权。）',
+  gu:'顾曼芝在德昌号老门槛前蹲了很久，手指摩挲着木头。（后来她坦白：那是她六岁刻的身高线——她是蒙冤学徒顾守拙之女。）',
+  tang:'汤圆圆的帆布包里露出一角泛黄的纸，她立刻把包抱到胸前。（后来你知道：那是奶奶托付的半张旧配方。）',
+  zheng:'郑野接了个电话走远了，回来时口袋里多了只鼓鼓的信封。（他掏出代收单：替客户代收的货款。）',
+  lin:'林晚的笔记本里夹着一份盖红章的文件，她记笔记时眼睛在每个人身上转。（她后来摊牌：那是能钉死味莱当年罪行的旧台账。）',
+};
+const MOTIVES={
+  shen:'压垮他的是那张收养公证书——"沈氏后人"四个字判了他出局。既然注定一无所有，不如先卖个好价钱。',
+  gu:'她恨错了方向：翻案无门，就让沈家也尝尝身败名裂的滋味。味莱只是递刀的人，握刀的是二十年的怨。',
+  tang:'七位数的报价，第一通电话她挂了，第二通她没挂。扩张欠下的债，比奶奶临终的嘱托声音更响。',
+  zheng:'十八万的债、平台抽成、老家的娃。五十万，买走了老街最热心的野哥。',
+  lin:'明面谈收购只是幌子，她自己就是上司口中的"其他人"。第十二盏老字号的灯，她要亲手关掉。',
+};
+/* 各点求助台词：g=真话 m=黄雀的谎话（细节有错，可与线索对照拆穿） */
+const HELP={
+  tea:{best:'gu', g:h=>`${h.name}凑进茶客堆里，三言两语就套出了话："老板娘说，案发是<b>四月十七</b>夜里，第二天报纸就传遍全城，都说是学徒干的。"`,
+       m:h=>`${h.name}打听了一圈，回来说："老板娘讲，案发是<b>四月十八</b>夜里……应该没记错吧。"`},
+  post:{best:'shen', g:h=>`${h.name}端详着信纸："这是老爷子的笔迹。他写字总把最后一笔拖长……这诗不对劲，<b>你试试竖着只读每行第一个字</b>。"`,
+       m:h=>`${h.name}扫了一眼："就是老人的感怀诗罢了，<b>没什么机关，别浪费时间琢磨</b>。"`},
+  park:{best:'zheng', g:h=>`${h.name}指着银杏道："石碑写'亭东银杏七株，其三藏秋'——<b>从东边数第三棵</b>，树干上还有个旧刻痕，我送件时见过。"`,
+       m:h=>`${h.name}挠头："老街人说方位从来反着说的，碑上写东，<b>你该从西边数第三棵</b>。"`},
+  book:{best:'lin', g:h=>`${h.name}看着铜锁："标准的日期锁。'月在前日在后'——<b>把案发那天拼成四位数</b>就是了。"`,
+       m:h=>`${h.name}回忆道："我在档案里见过结案日期，<b>试试0418</b>。"`},
+};
+const EXITS={north:'北巷', east:'东市', west:'西桥'};
+
+/* ================= 状态 ================= */
+const G={ mode:'boot', q:-1, coins:0, mole:null, trueSeen:0, log:[], helpers:{}, extraBlock:false, intel:0 };
+const $=id=>document.getElementById(id);
+function newGame(){ G.q=-1; G.coins=0; G.mole=NPCS[(Math.random()*NPCS.length)|0].id; G.trueSeen=0; G.log=[]; G.helpers={}; G.extraBlock=false; G.intel=0; setCoins(0); }
+function setCoins(n){ G.coins=n; $('hud-coin').textContent=n; }
+function toast(t,ms=1600){ const el=$('toast'); el.innerHTML=t; el.style.opacity=1; clearTimeout(el._t); el._t=setTimeout(()=>el.style.opacity=0,ms); }
+function logIt(title, body){ G.log.push({t:title,b:body}); }
+function moleName(){ return byId(G.mole).name; }
+function toggleJournal(s){
+  if(s){ $('journal-list').innerHTML = G.log.length? G.log.map(e=>`<div class="entry"><b>${e.t}</b><br>${e.b}</div>`).join(''):'<p class="muted">手册还是空的。先看，再问，最后才下结论。</p>'; $('journal').style.display='block'; }
+  else $('journal').style.display='none';
+}
+window.toggleJournal=toggleJournal;
+
+/* ================= three 场景 ================= */
+const canvas=$('c3d');
+const renderer=new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();
+const DUSK=0xE8C79A;
+scene.background=new THREE.Color(DUSK);
+scene.fog=new THREE.Fog(DUSK, 55, 160);
+const camera=new THREE.PerspectiveCamera(60, 1, .1, 400);
+function onResize(){ renderer.setSize(innerWidth,innerHeight); camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); }
+addEventListener('resize',onResize); onResize();
+scene.add(new THREE.HemisphereLight(0xFFEFD0, 0x6b5a3e, .95));
+const sun=new THREE.DirectionalLight(0xFFE0B0,.75); sun.position.set(-30,50,20); scene.add(sun);
+
+/* 地面与道路 */
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(200,220), new THREE.MeshLambertMaterial({color:0xA79B7E}));
+ground.rotation.x=-Math.PI/2; scene.add(ground);
+const roadMat=new THREE.MeshLambertMaterial({color:0x8a8070});
+function road(w,d,x,z){ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d), roadMat); m.rotation.x=-Math.PI/2; m.position.set(x,.02,z); scene.add(m); }
+road(10,150,0,-20);      // 南北大街
+road(120,10,0,-5);       // 东西大街
+road(120,10,0,-55);      // 北横街
+const plaza=new THREE.Mesh(new THREE.CircleGeometry(17,28), new THREE.MeshLambertMaterial({color:0x99907a}));
+plaza.rotation.x=-Math.PI/2; plaza.position.set(0,.03,25); scene.add(plaza);
+
+/* 文字牌匾 */
+function signTex(txt, fg='#F6EFDE', bg='#5a2a20'){
+  const cv=document.createElement('canvas'); cv.width=512; cv.height=128;
+  const g=cv.getContext('2d');
+  g.fillStyle=bg; g.fillRect(0,0,512,128);
+  g.strokeStyle='#C9A55A'; g.lineWidth=10; g.strokeRect(6,6,500,116);
+  g.fillStyle=fg; g.font='86px "Ma Shan Zheng", serif'; g.textAlign='center'; g.textBaseline='middle';
+  g.fillText(txt,256,72);
+  const t=new THREE.CanvasTexture(cv); return t;
+}
+const colliders=[]; // {x,z,hw,hd}
+function landmark(name,x,z,w,h,d,color,rotY=0){
+  const g=new THREE.Group();
+  const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshLambertMaterial({color})); b.position.y=h/2; g.add(b);
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(Math.max(w,d)*.78,h*.32,4), new THREE.MeshLambertMaterial({color:0x4E4A42}));
+  roof.rotation.y=Math.PI/4; roof.position.y=h+h*.16; g.add(roof);
+  if(name){
+    const s=new THREE.Mesh(new THREE.PlaneGeometry(w*.7,w*.7*0.25), new THREE.MeshBasicMaterial({map:signTex(name)}));
+    s.position.set(0,h*.72,d/2+.06); g.add(s);
+  }
+  g.position.set(x,0,z); g.rotation.y=rotY; scene.add(g);
+  colliders.push({x,z,hw:w/2+.6,hd:d/2+.6});
+  return g;
+}
+/* 地标 */
+landmark('德昌茶馆', -42,-5, 14,7,10, 0xB39B78);
+landmark('老邮局',    42,-5, 14,8,10, 0x9E8A6B);
+landmark('三味书屋', -42,-55, 13,7,10, 0xBCA57F);
+landmark('德昌号旧址', 0,58, 16,8,11, 0xC9B392, Math.PI);
+/* 装饰楼 */
+const decoPos=[[-25,-30],[25,-30],[-28,14],[28,14],[-55,-30],[55,-30],[20,-70],[-20,-70],[55,-70],[-55,-70],[55,10],[-55,10]];
+for(const [x,z] of decoPos){ landmark('', x,z, 10+Math.random()*4, 5+Math.random()*3, 9, [0xC9B392,0xB39B78,0x9E8A6B][(Math.random()*3)|0]); }
+/* 公园：亭子/石碑/银杏道 */
+const parkG=new THREE.Group();
+const pav=new THREE.Group();
+for(const [dx,dz] of [[-2,-2],[2,-2],[-2,2],[2,2]]){ const p=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,3,8), new THREE.MeshLambertMaterial({color:0x7a3b2e})); p.position.set(dx,1.5,dz); pav.add(p); }
+const pr=new THREE.Mesh(new THREE.ConeGeometry(3.6,1.6,4), new THREE.MeshLambertMaterial({color:0x4E4A42})); pr.rotation.y=Math.PI/4; pr.position.y=3.6; pav.add(pr);
+pav.position.set(0,0,-42); parkG.add(pav);
+const stele=new THREE.Mesh(new THREE.BoxGeometry(1.6,2.2,.4), new THREE.MeshLambertMaterial({color:0x6d685e}));
+stele.position.set(-7,1.1,-38); parkG.add(stele);
+const trees=[];
+const trunkMat=new THREE.MeshLambertMaterial({color:0x6d4c2f});
+const leafMat=new THREE.MeshLambertMaterial({color:0xC9A03D});
+for(let i=0;i<7;i++){
+  const x=-18+i*6, z=-34;
+  const t=new THREE.Group();
+  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.28,.36,2.4,8), trunkMat); trunk.position.y=1.2; t.add(trunk);
+  const leaf=new THREE.Mesh(new THREE.ConeGeometry(1.7,3.2,8), leafMat); leaf.position.y=3.6; t.add(leaf);
+  t.position.set(x,0,z); parkG.add(t);
+  trees.push({x,z,idxFromEast:7-i}); // 东=x大
+}
+scene.add(parkG);
+/* 三个出口牌坊 */
+function gate(name,x,z,rotY){
+  const g=new THREE.Group();
+  for(const dx of [-3,3]){ const p=new THREE.Mesh(new THREE.BoxGeometry(.7,5,.7), new THREE.MeshLambertMaterial({color:0x7a3b2e})); p.position.set(dx,2.5,0); g.add(p); }
+  const top=new THREE.Mesh(new THREE.BoxGeometry(7.6,.8,1), new THREE.MeshLambertMaterial({color:0x5a2a20})); top.position.y=5.1; g.add(top);
+  const s=new THREE.Mesh(new THREE.PlaneGeometry(4,1), new THREE.MeshBasicMaterial({map:signTex(name), side:THREE.DoubleSide}));
+  s.position.set(0,4.2,0); g.add(s);
+  g.position.set(x,0,z); g.rotation.y=rotY; scene.add(g);
+}
+gate('北巷', 0,-88, 0); gate('东市', 68,-20, Math.PI/2); gate('西桥', -68,-20, Math.PI/2);
+
+/* 人物 */
+function tagTex(ch){
+  const cv=document.createElement('canvas'); cv.width=cv.height=128;
+  const g=cv.getContext('2d');
+  g.fillStyle='#F6EFDE'; g.fillRect(0,0,128,128);
+  g.strokeStyle='#2A241B'; g.lineWidth=8; g.strokeRect(4,4,120,120);
+  g.fillStyle='#A63325'; g.font='84px "Ma Shan Zheng", serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(ch,64,72);
+  return new THREE.CanvasTexture(cv);
+}
+function makeRunner(jacket, tagChar){
+  const gp=new THREE.Group();
+  const mj=new THREE.MeshLambertMaterial({color:jacket});
+  const ms=new THREE.MeshLambertMaterial({color:0xE8C09A});
+  const md=new THREE.MeshLambertMaterial({color:0x33302a});
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.62,.72,.36), mj); body.position.y=1.08; gp.add(body);
+  const head=new THREE.Mesh(new THREE.BoxGeometry(.4,.4,.38), ms); head.position.y=1.72; gp.add(head);
+  const hair=new THREE.Mesh(new THREE.BoxGeometry(.42,.14,.4), md); hair.position.y=1.94; gp.add(hair);
+  const mk=(w,h,mat)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,w), mat); m.geometry.translate(0,-h/2,0); return m; };
+  const aL=mk(.15,.6,mj), aR=mk(.15,.6,mj), lL=mk(.2,.72,md), lR=mk(.2,.72,md);
+  aL.position.set(-.45,1.4,0); aR.position.set(.45,1.4,0);
+  lL.position.set(-.18,.72,0); lR.position.set(.18,.72,0);
+  gp.add(aL,aR,lL,lR);
+  const tag=new THREE.Mesh(new THREE.PlaneGeometry(.5,.5), new THREE.MeshBasicMaterial({map:tagTex(tagChar)}));
+  tag.position.set(0,1.12,.22); gp.add(tag);
+  gp.userData={aL,aR,lL,lR};
+  return gp;
+}
+const player=makeRunner(0xA63325,'白'); scene.add(player);
+const fubo=makeRunner(0x55504a,'福'); scene.add(fubo);
+const team={};
+NPCS.forEach((n,i)=>{ const r=makeRunner(n.color, n.tag); scene.add(r); team[n.id]=r; });
+function placeTeam(cx,cz,face=0){
+  NPCS.forEach((n,i)=>{ const a=(i-2)*.5; const r=team[n.id];
+    r.position.set(cx+Math.sin(a)*3.4, 0, cz+Math.cos(a)*2.2);
+    r.rotation.y=face;
+  });
+}
+/* 光柱信标 */
+const beacon=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,7,16,1,true),
+  new THREE.MeshBasicMaterial({color:0xE8C66B, transparent:true, opacity:.35, side:THREE.DoubleSide}));
+beacon.position.y=3.5; scene.add(beacon);
+/* 引导箭头 */
+const arrow=new THREE.Mesh(new THREE.ConeGeometry(.3,.8,6), new THREE.MeshBasicMaterial({color:0xE8C66B}));
+scene.add(arrow);
+/* 散落铜钱 */
+const coinGeo=new THREE.CylinderGeometry(.3,.3,.08,14);
+const coinMat=new THREE.MeshLambertMaterial({color:0xE8C66B, emissive:0x8a6b1e});
+let coinEnts=[];
+function scatterCoins(){
+  coinEnts.forEach(c=>scene.remove(c.m)); coinEnts=[];
+  const spots=[[-20,-5],[20,-5],[0,-15],[-42,-20],[42,-20],[0,-30],[-14,-46],[14,-46],[-42,-40],[42,-40],[-28,-55],[28,-55],[10,10],[-10,10],[0,-64],[34,5],[-34,5],[0,-78]];
+  for(const [x,z] of spots){ const m=new THREE.Mesh(coinGeo,coinMat); m.rotation.x=Math.PI/2; m.position.set(x,.9,z); scene.add(m); coinEnts.push({m,x,z}); }
+}
+
+/* ================= 移动与操作 ================= */
+const P={x:0,z:30,vx:0,vz:0,face:0};
+const keys={};
+addEventListener('keydown',e=>{ keys[e.key.toLowerCase()]=true; if([' ','arrowup','arrowdown'].includes(e.key.toLowerCase())) e.preventDefault(); if((e.key==='e'||e.key==='E'||e.key===' ')&&!e.repeat) tryInteract(); });
+addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
+/* 虚拟摇杆 */
+const isTouch=matchMedia('(pointer:coarse)').matches;
+let joy={on:false,dx:0,dz:0};
+const stick=$('stick'), knob=$('knob');
+if(isTouch){ stick.style.display='block'; $('act').style.display='block'; }
+stick.addEventListener('touchstart',e=>{ joy.on=true; },{passive:true});
+stick.addEventListener('touchmove',e=>{
+  const t=e.touches[0], r=stick.getBoundingClientRect();
+  let dx=t.clientX-(r.left+55), dz=t.clientY-(r.top+55);
+  const len=Math.hypot(dx,dz)||1, cl=Math.min(len,42);
+  dx=dx/len*cl; dz=dz/len*cl;
+  knob.style.left=(35+dx)+'px'; knob.style.top=(35+dz)+'px';
+  joy.dx=dx/42; joy.dz=dz/42;
+},{passive:true});
+stick.addEventListener('touchend',()=>{ joy.on=false; joy.dx=joy.dz=0; knob.style.left='35px'; knob.style.top='35px'; },{passive:true});
+$('act').addEventListener('click',()=>tryInteract());
+
+function collide(nx,nz){
+  for(const c of colliders){
+    if(Math.abs(nx-c.x)<c.hw && Math.abs(nz-c.z)<c.hd){
+      // 推出最浅轴
+      const px=c.hw-Math.abs(nx-c.x), pz=c.hd-Math.abs(nz-c.z);
+      if(px<pz) nx=c.x+Math.sign(nx-c.x)*c.hw; else nz=c.z+Math.sign(nz-c.z)*c.hd;
+    }
+  }
+  nx=Math.max(-64,Math.min(64,nx)); nz=Math.max(-84,Math.min(36,nz));
+  return [nx,nz];
+}
+
+/* ================= 任务机 ================= */
+/* 每步：target(信标位置), title, desc, hint, act(互动回调), teamAt */
+const QUESTS=[
+  {t:[0,25],  title:'序章 · 广场集合', desc:'去广场中央找管家福伯（金色光柱）', teamAt:[0,28], act:()=>siteIntro()},
+  {t:[-34,-5],title:'第一站 · 德昌茶馆', desc:'到茶馆打听二十年前的案子', teamAt:[-30,-2], act:()=>siteTea()},
+  {t:[34,-5], title:'第二站 · 老邮局', desc:'取出老掌柜压在柜台下的信', teamAt:[30,-2], act:()=>sitePost()},
+  {t:[0,-42], title:'第三站 · 公园', desc:'先看石碑，再找银杏道下藏的东西', teamAt:[6,-44], act:()=>sitePark()},
+  {t:[-34,-55],title:'第四站 · 三味书屋', desc:'解开四位数的铜锁铁匣', teamAt:[-30,-52], act:()=>siteBook()},
+  {t:[0,25],  title:'终局 · 回到广场', desc:'回广场找福伯——开箱之前，先清门户', teamAt:[0,28], act:()=>siteFinale()},
+];
+function setQuest(i){
+  G.q=i;
+  const q=QUESTS[i];
+  $('quest-t').textContent=q.title; $('quest-d').textContent=q.desc;
+  beacon.position.set(q.t[0],3.5,q.t[1]);
+  placeTeam(q.teamAt[0], q.teamAt[1]);
+  fubo.position.set(i===0||i===5? q.t[0]+2:2, 0, i===0||i===5? q.t[1]:27);
+}
+/* 交互检测 */
+let nearThing=null;
+function findNear(){
+  if(G.mode!=='play') return null;
+  const q=QUESTS[G.q];
+  const d=Math.hypot(P.x-q.t[0], P.z-q.t[1]);
+  if(d<4.2) return {label:q.title.replace(/^[^·]+· /,''), fn:q.act};
+  if(G.q===3){ // 公园的树与石碑
+    const ds=Math.hypot(P.x-(-7), P.z-(-38));
+    if(ds<3) return {label:'读石碑', fn:steleRead};
+    for(const tr of trees){
+      if(Math.hypot(P.x-tr.x,P.z-tr.z)<2.2) return {label:'在这棵银杏下挖挖看', fn:()=>digTree(tr)};
+    }
+  }
+  return null;
+}
+function tryInteract(){ if(G.mode==='play'&&nearThing) nearThing.fn(); }
+
+/* ================= UI ================= */
+function ui(html){ G.mode='ui'; $('ui').innerHTML=`<div class="sheet">${html}</div>`; $('ui').style.display='block'; $('ui').scrollTop=0; }
+function closeUI(){ G.mode='play'; $('ui').style.display='none'; }
+window.closeUI=closeUI;
+/* 求助面板：sk=站点键, done=回调 */
+function helperPick(sk, done){
+  if(sk in G.helpers){ done(''); return; }
+  ui(`<span class="tag">带谁一起？</span>
+    <p class="muted" style="font-size:14px">选一位队友帮忙。选对专长事半功倍——但记住，<b class="seal-t">队友里有一只黄雀</b>，ta的"帮忙"未必是帮忙。</p>
+    ${NPCS.map(n=>`<button class="opt" onclick="pickHelper('${sk}','${n.id}')">${n.emoji} <b>${n.name}</b> · <span class="muted">${n.skill}</span></button>`).join('')}
+    <p class="center"><button class="alt" onclick="pickHelper('${sk}','')">不求助，自己来</button></p>`);
+  window._helperDone=done;
+}
+window.pickHelper=function(sk,id){
+  let line='';
+  G.helpers[sk]=id||'none';
+  if(id){
+    const h=byId(id);
+    line = (id===G.mole? HELP[sk].m(h) : HELP[sk].g(h));
+    logIt(`${QUESTS[G.q].title} · ${h.name}的说法`, line.replace(/<[^>]+>/g,''));
+  }
+  window._helperDone(line);
+};
+
+/* ================= 站点剧情 ================= */
+function siteIntro(){
+  ui(`<span class="tag">序章 · 广场</span>
+    <div class="dlg"><span class="who">福伯：</span>「白先生，各位。老爷子的遗嘱只有一句：<b class="seal-t">真正的德昌号，藏在这座城里。</b>五个地方，五条线索，走完你们就知道二十年前的四月十七，德昌号里到底发生了什么。」</div>
+    <div class="dlg"><span class="who">福伯：</span>「还有一句，福伯必须原样带到——老爷子说：<b class="seal-t">'螳螂捕蝉，黄雀在后。我请来的人里，有一只黄雀。'</b>诸位，好自为之。」</div>
+    <p class="muted" style="font-size:14px">队友们面面相觑。你摸了摸口袋里父亲的笔记本，最后一页写着："现场系伪造。存疑：报案人。愧对顾。"</p>
+    <p class="center"><button onclick="closeUI();setQuest(1);toast('🏮 前往德昌茶馆（跟着光柱走）')">出发 → 德昌茶馆</button></p>`);
+  logIt('父亲的笔记','"现场系伪造。存疑：报案人。愧对顾。"——二十年前的失窃案，另有隐情。');
+}
+/* —— 茶馆 —— */
+function siteTea(){
+  helperPick('tea', line=>{
+    ui(`<span class="tag">德昌茶馆</span>
+      ${line?`<div class="dlg">${line}</div>`:''}
+      <p>老板娘上下打量你们，压低嗓子："想看二十年前的旧报纸？行啊——老爷子留过话，来人得对上暗号。"</p>
+      <div class="dlg"><span class="who">老板娘：</span>「上句是：<b>螳螂捕蝉</b>——下句呢？」</div>
+      <button class="opt" onclick="teaAns(1)">「黄雀在后。」</button>
+      <button class="opt" onclick="teaAns(0)">「雀上高枝。」</button>
+      <button class="opt" onclick="teaAns(0)">「蝉鸣依旧。」</button>`);
+  });
+}
+window.teaAns=function(ok){
+  if(!ok){ ui(`<p>老板娘端起茶壶："不对。回去想想请柬上写了什么。"</p><p class="center"><button onclick="siteTea()">再试</button></p>`); return; }
+  ui(`<span class="tag">德昌茶馆 · 暗号对上了</span>
+    <p>老板娘从柜台底下抽出一张发脆的报纸，又摆出三只倒扣的茶碗："老规矩，赢一局'茶碗藏珠'再拿走。看好了——珠在<b>左</b>碗。"她双手翻飞，只换了<b class="seal-t">两次</b>：左右互换、再左中互换。珠在哪？</p>
+    <button class="opt" onclick="teaCup(0)">左碗</button>
+    <button class="opt" onclick="teaCup(1)">中碗</button>
+    <button class="opt" onclick="teaCup(0)">右碗</button>`);
+};
+window.teaCup=function(ok){
+  const win=ok===1;
+  if(win) setCoins(G.coins+3);
+  ui(`<span class="tag">德昌茶馆 · 线索一</span>
+    <p>${win?'你盯准了轨迹——珠子果然在中碗！老板娘挑挑眉："眼力不错。"<b style="color:var(--gold)">+3🪙</b>':'碗一掀，空的。老板娘笑了："眼神再练练。报纸照给，彩头没了。"'}</p>
+    <div class="letter">「<b>百年德昌号祖传配方失窃 学徒顾某涉重大嫌疑</b>」<br><span class="muted" style="font-size:14px">（2006年<b>4月18日</b>《城南晚报》，报道<b>4月17日夜</b>案发）办案民警<b>白国安</b>表示："证据不足，不对任何人定性。"角落小广告：<b class="seal-t">"莱记商行——蜜饯糖料，价廉物美。"</b></span></div>
+    <p>父亲的名字印在二十年前的头版上。这一案，你替他查完。</p>
+    <p class="center"><button onclick="closeUI();setQuest(2);toast('📮 前往老邮局')">继续 → 老邮局</button></p>`);
+  logIt('线索一 · 2006年报纸','案发于4月17日夜。嫌疑指向学徒"顾某"；办案人白国安（父亲）；角落有"莱记商行"广告。');
+};
+/* —— 邮局 —— */
+function sitePost(){
+  helperPick('post', line=>{
+    ui(`<span class="tag">老邮局</span>
+      ${line?`<div class="dlg">${line}</div>`:''}
+      <p>老局长从柜台下取出一封火漆封口的信："老沈说，走到这儿的人，配读这封信。"</p>
+      <div class="letter"><b>黄</b>铜锁扣自内落，<br><b>雀</b>衔桂枝印火漆。<br><b>在</b>案卷上蒙尘者，<br><b>身</b>负污名二十载。<br><b>边</b>角账页留半纸，静待后来人拾。</div>
+      <p>这首诗里藏着一句话。是什么？</p>
+      <button class="opt" onclick="postAns(1)">竖读首字：「黄雀在身边」</button>
+      <button class="opt" onclick="postAns(0)">尾字连读：「落漆者载拾」</button>
+      <button class="opt" onclick="postAns(0)">没有机关，只是感怀诗</button>`);
+  });
+}
+window.postAns=function(ok){
+  if(!ok){ ui(`<p>你翻来覆去读了几遍，总觉得不对。<span class="muted">（提示：老爷子说过——聪明人，竖着读。）</span></p><p class="center"><button onclick="sitePost()">再读一遍</button></p>`); return; }
+  setCoins(G.coins+3);
+  ui(`<span class="tag">老邮局 · 线索二 <span class="muted">+3🪙</span></span>
+    <p>竖读首字——<b class="seal-t" style="font-size:20px">黄 雀 在 身 边</b>。</p>
+    <p>老掌柜早就知道队伍里有内鬼。还有一句扎眼的："锁扣<b>自内</b>落"——和父亲笔记里"现场系伪造"，对上了。<b class="seal-t">当年根本没有外贼。</b></p>
+    <p class="center"><button onclick="afterPost()">继续</button></p>`);
+  logIt('线索二 · 藏头诗','竖读"黄雀在身边"：内鬼确凿存在。"锁扣自内落"：当年没有外贼，现场是伪造的。');
+};
+window.afterPost=function(){
+  const t=TRUE_OBS[G.trueSeen++].replaceAll('{M}',moleName());
+  logIt('观察记录',t);
+  ui(`<span class="tag">离开邮局时……</span><div class="clue-pop">${t}</div>
+    <p class="muted" style="font-size:14px">可疑的行为未必都是贼——记下来，终局对质。</p>
+    <p class="center"><button onclick="closeUI();setQuest(3);toast('🌳 前往公园（先看石碑）')">继续 → 公园</button></p>`);
+};
+/* —— 公园 —— */
+let parkStarted=false, steleSeen=false;
+function sitePark(){
+  parkStarted=true;
+  helperPick('park', line=>{
+    ui(`<span class="tag">公园 · 亭前</span>
+      <div class="dlg"><span class="who">福伯（电话）：</span>「老爷子在公园埋了样东西。他只留了一句：<b class="seal-t">去读亭边的石碑。</b>」</div>
+      ${line?`<div class="dlg">${line}</div>`:''}
+      <p class="muted" style="font-size:14px">走到石碑边可以细读；找准那棵银杏，走过去按"调查"挖开。挖错了也没关系，土会告诉你答案。</p>
+      <p class="center"><button onclick="closeUI();toast('🪦 先去读亭边的石碑')">开始寻找</button></p>`);
+  });
+}
+function steleRead(){
+  steleSeen=true;
+  ui(`<span class="tag">石碑</span>
+    <div class="letter" style="text-align:center; font-size:18px">亭东银杏七株<br>其三藏秋</div>
+    <p class="muted" style="font-size:14px">"亭东……其三藏秋。"——从<b>东边</b>数起，第三棵银杏，藏着东西。</p>
+    <p class="center"><button onclick="closeUI()">去找那棵树</button></p>`);
+}
+function digTree(tr){
+  if(tr.idxFromEast===3){
+    setCoins(G.coins+3);
+    const inn=NPCS.filter(n=>n.id!==G.mole);
+    const h=HERRINGS[inn[(Math.random()*inn.length)|0].id];
+    logIt('观察记录',h);
+    ui(`<span class="tag">公园 · 线索三 <span class="muted">+3🪙</span></span>
+      <p>树根旁的土是松的。你挖出一只油布包——里面是一页烧焦边角的账本。</p>
+      <div class="letter">丙戌年四月<br>4月10日　莱记 桂花蜜 廿坛 入库<br><b>4月14日　莱记 桂花蜜 廿坛——退</b><br>4月15日　送 检〔后字被墨涂去〕<br><span class="muted">朱批："蜜不对。守拙验出来的。<b class="seal-t">蝉不知螳螂——螳螂也未必知道树后头的东西。</b>"</span></div>
+      <p>案发前三天，德昌号把莱记的蜜整批退货送检。"莱记"——报纸角落那个广告，又出现了。</p>
+      <div class="clue-pop">${h}</div>
+      <p class="center"><button onclick="closeUI();setQuest(4);toast('📚 前往三味书屋')">继续 → 三味书屋</button></p>`);
+    logIt('线索三 · 账本残页','案发前3天，德昌号退掉莱记桂花蜜并送检。朱批暗指"螳螂捕蝉，黄雀在后"的局中局。');
+  } else {
+    toast('🕳️ 土是实的，什么都没有……'+(steleSeen?'（再想想碑文：亭东，其三）':'（先去读石碑？）'),2200);
+  }
+}
+/* —— 书店 —— */
+let bookTries=3;
+function siteBook(){
+  bookTries=3;
+  helperPick('book', line=>{
+    ui(`<span class="tag">三味书屋</span>
+      <p>店主指了指柜台上的铁匣："老沈存这儿十年了。他说，钥匙不是铜的，是<b>记性</b>。"匣上是一把四位数字铜锁，刻着一行小字：</p>
+      <div class="letter" style="text-align:center">「头版记得那一天，请柬写着那一天。<br><b>月在前，日在后。</b>三次机会。」</div>
+      ${line?`<div class="dlg">${line}</div>`:''}
+      <div class="center"><input class="code-in" id="code" inputmode="numeric" maxlength="4" placeholder="····" aria-label="四位密码">
+      <p><button onclick="bookTry()">开锁</button></p><p id="codemsg" class="muted"></p></div>`);
+  });
+}
+window.bookTry=function(){
+  const v=$('code').value.trim();
+  if(!/^\d{4}$/.test(v)){ $('codemsg').textContent='要四位数字。'; return; }
+  if(v==='0417'){ const c=[0,2,3,4][bookTries]; setCoins(G.coins+c); bookOpen(`咔哒。锁开了。<b style="color:var(--gold)">+${c}🪙</b>`); }
+  else {
+    bookTries--;
+    if(bookTries<=0) bookOpen('三次都错了。店主叹口气摸出备用钥匙："老沈说，记性不好的人也配知道真相，只是不配拿彩头。"');
+    else $('codemsg').innerHTML=`纹丝不动。还剩 <b>${bookTries}</b> 次。<span class="muted">（案发那一天……月在前，日在后）</span>`;
+  }
+};
+function bookOpen(head){
+  const t=TRUE_OBS[G.trueSeen++].replaceAll('{M}',moleName());
+  logIt('观察记录',t);
+  ui(`<span class="tag">三味书屋 · 线索四</span>
+    <p>${head}</p>
+    <div class="letter"><b>检验报告单</b>　送检日期：2006年4月16日　送检人：<b>沈德昌</b><br>样品：桂花蜜（莱记商行）<br>结论：<b class="seal-t">致敏物超标十二倍</b>，不得用于食品。</div>
+    <div class="letter"><b>德昌桂花糕 · 改方（下半阙）</b>　〔撕口处有半枚衔桂雀鸟火漆印〕<br><span class="muted">背面小字："上半阙托付故人。持之来见者，即我故人。"</span></div>
+    <p>送检4月16，"失窃"4月17。<b class="seal-t">先知道蜜有毒，后"丢"了配方。</b>真相拼上了：莱记掉包投毒 → 老掌柜将计就计自导自演失窃案，把配方藏起来绝了贼心——却让学徒顾守拙背了二十年黑锅。</p>
+    <div class="dlg"><span class="who">汤圆圆：</span>（突然捂住嘴）「这个火漆印……我、我包里有个东西，你们看——」她颤着手掏出半张泛黄的纸。<b class="seal-t">两个撕口，严丝合缝。</b>「奶奶说，等持另一半的人来……原来等的是今天。」</div>
+    <div class="clue-pop">${t}</div>
+    <p>案子结了，钥匙齐了。<b>但黄雀还没抓到。</b></p>
+    <p class="center"><button onclick="closeUI();setQuest(5);toast('🏮 回到广场——先清门户')">回广场 → 终局</button></p>`);
+  logIt('线索四 · 检验单与配方','莱记的蜜有毒。失窃案是老掌柜自导自演——冤了学徒二十年。汤圆圆的半张旧配方与匣中半张火漆合璧。');
+}
+/* —— 终局 —— */
+function siteFinale(){
+  ui(`<span class="tag">终局 · 广场</span>
+    <div class="dlg"><span class="who">福伯：</span>「宝箱就在旧址地窖里。但老爷子有规矩——<b class="seal-t">开箱之前，先清门户。</b>黄雀不除，箱子不开。」</div>
+    <p>指认之前，管家商店最后开张。你有 <b style="color:var(--gold)">${G.coins}🪙</b>。</p>
+    <button class="opt" onclick="buyIntel()">🕵️ 情报卡（3🪙）—— 福伯的耳朵比你想的灵</button>
+    <button class="opt" onclick="buyBlock()" ${G.extraBlock?'disabled':''}>🚧 加派人手（5🪙）—— 围捕时可以多堵一条路 ${G.extraBlock?'（已购）':''}</button>
+    <p class="center"><button onclick="accuseMenu()">我准备好指认了 →</button></p>`);
+}
+window.buyIntel=function(){
+  if(G.coins<3){ toast('铜钱不够'); return; }
+  setCoins(G.coins-3);
+  let t;
+  if(G.trueSeen<TRUE_OBS.length){ t=TRUE_OBS[G.trueSeen++].replaceAll('{M}',moleName()); }
+  else t='福伯压低声音："老爷子只交代了一句——留心那个说法和证据对不上的人。"';
+  logIt('情报卡',t);
+  ui(`<span class="tag">情报卡</span><div class="clue-pop">${t}</div><p class="center"><button onclick="siteFinale()">← 回到商店</button></p>`);
+};
+window.buyBlock=function(){ if(G.coins<5){ toast('铜钱不够'); return; } setCoins(G.coins-5); G.extraBlock=true; siteFinale(); };
+window.accuseMenu=function(){
+  ui(`<span class="tag">指认 · 只有一次机会</span>
+    <p>五个人站成一排。福伯说："白警官当年不肯错判一个人。<b class="seal-t">白先生，轮到你了。</b>"</p>
+    <p class="muted" style="font-size:14px">先翻翻手册：谁的"帮忙"和线索对不上？（求助时的说法都记在手册里）</p>
+    <p class="center"><button class="alt" onclick="toggleJournal(true)">📖 翻调查手册</button></p>
+    ${NPCS.map(n=>`<button class="opt" onclick="accuse('${n.id}')">${n.emoji} <b>${n.name}</b> · <span class="muted">${n.job}</span></button>`).join('')}`);
+};
+let accused=null, blocked=[];
+window.accuse=function(id){
+  accused=id; blocked=[];
+  const n=byId(id);
+  ui(`<p class="center" style="font-size:22px">指认 <b class="seal-t">${n.name}</b> 是黄雀？</p>
+    <p class="center muted">话一出口，ta一定夺路而逃。广场有三条出路——你们得先布好口袋。</p>
+    <div class="center"><button onclick="blockMenu()">布置围捕</button><button class="alt" onclick="accuseMenu()">再想想</button></div>`);
+};
+window.blockMenu=function(){
+  const max=G.extraBlock?3:2;
+  ui(`<span class="tag">合作围捕 · 选${max}条路堵死</span>
+    <div class="dlg"><span class="who">福伯：</span>「人手只够堵${max===3?'三':'两'}条路。老爷子说过——<b class="seal-t">人急了，只会往自己最熟的路跑。</b>想想ta是干什么的。」</div>
+    <div class="letter" style="font-size:14px">
+      <b>北巷</b>：七拐八绕的小道，生人会迷路<br>
+      <b>东市</b>：人山人海的集市，铺子挨着铺子<br>
+      <b>西桥</b>：过桥就是停车场和工作室街区
+    </div>
+    ${Object.entries(EXITS).map(([k,v])=>`<button class="opt" id="bk-${k}" onclick="togBlock('${k}',${max})">🚧 堵住 ${v}</button>`).join('')}
+    <p class="center"><button id="gobtn" disabled onclick="doAccuse()">开始指认！</button></p>`);
+};
+window.togBlock=function(k,max){
+  if(blocked.includes(k)) blocked=blocked.filter(x=>x!==k);
+  else { if(blocked.length>=max){ toast('人手不够了，先取消一条'); return; } blocked.push(k); }
+  Object.keys(EXITS).forEach(x=>{ const b=$('bk-'+x); if(b) b.classList.toggle('sel', blocked.includes(x)); });
+  $('gobtn').disabled = blocked.length<2;
+};
+window.doAccuse=function(){
+  const n=byId(accused);
+  const route=n.exit;
+  const caught=blocked.includes(route);
+  const isMole=accused===G.mole;
+  const routeTxt=`${n.name}猛地转身，朝<b>${EXITS[route]}</b>狂奔——<span class="muted">（${n.exitWhy}）</span>`;
+  if(caught){
+    const catcher=NPCS.filter(x=>x.id!==accused)[0];
+    if(isMole) endScreen('A', `<p>你念出名字的瞬间，${routeTxt}</p><p>——迎面撞上早已候在那里的队友！三人一拥而上，你一把抓住ta背后的名牌——<b class="seal-t" style="font-size:20px">刺啦！</b></p><p>名牌在你手里。${n.name}瘫坐在青石板上，再没了辩解的力气。</p>`);
+    else endScreen('C', `<p>${routeTxt}</p><p>ta被堵个正着。可名牌撕下来的那一刻，ta眼里只有委屈："二十年前，全城的人指着一个无辜的学徒说，就是他。二十年后……白先生，<b class="seal-t">你和他们有什么分别？</b>"</p><p>混乱中，真正的黄雀——<b class="seal-t">${moleName()}</b>——悄悄退出了广场。</p>`);
+  } else {
+    if(isMole) endScreen('B', `<p>${routeTxt}</p><p>那条路——没人堵。${n.name}的背影消失在暮色里，口袋里是偷拍下的整张配方。</p><p>你猜对了人，却看错了路。老爷子算无遗策，只算漏了一件事——<b class="seal-t">人心的价钱。</b></p>`);
+    else endScreen('C', `<p>${routeTxt}</p><p>ta跑掉了——也好，因为ta本就不是黄雀。而真正的黄雀——<b class="seal-t">${moleName()}</b>——早已趁乱离开了广场。</p>`);
+  }
+};
+function endScreen(type, head){
+  const mole=byId(G.mole);
+  const confession=`<div class="letter">「二十年前的四月十七日夜里，德昌号没有进过贼。<b class="seal-t">贼是我。我偷走了我自己的配方。</b><br>
+    莱记的蜜有毒。我怕的不是丢方子，是方子落进他们手里，害了满城街坊。我藏起配方，报了假案——却没想到人言把守拙钉在了案板上。<br>
+    守拙，师父对不住你。白警官，你是唯一看穿我的人。<br>
+    掌灯的人换了。德昌号，明天照常开门。」<div style="text-align:right" class="muted">——沈德昌 绝笔</div></div>`;
+  const T={A:['雀','落','结局 · 雀落'],B:['雀','飞','结局 · 雀飞'],C:['错','网','结局 · 错网']}[type];
+  let tail='';
+  if(type==='A') tail=`<p>福伯从地窖抬出宝箱，当众念出那封信：</p>${confession}<p>顾守拙的名字从此干干净净，父亲那句"证据不足"终于等到了下文。<b class="seal-t brush" style="font-size:24px">结案。</b></p>`;
+  if(type==='B') tail=`<p>三天后，味莱发布"复刻百年老味"新品。德昌号的招牌被摆进他们的陈列柜，标签写着：<b class="seal-t">已收购。</b></p><p class="muted">至少，真相你带回来了：</p>${confession}`;
+  if(type==='C') tail=`<p>父亲一辈子不肯错判一个人。今天你替他结了案，却也替这座城，又冤了一个人。</p>${confession}`;
+  ui(`<p class="kicker">${T[2]}</p>
+    <h1 class="brush">${T[0]}<span>${T[1]}</span></h1>
+    ${head}
+    <div class="letter" style="border-color:var(--seal)"><b>黄雀 · ${mole.emoji} ${mole.name}</b><br><span class="muted" style="font-size:14px">${MOTIVES[G.mole]}</span></div>
+    ${tail}
+    <p class="center muted" style="font-size:13px">黄雀每局随机 · ta的谎话就藏在你的调查手册里</p>
+    <div class="center"><button onclick="startGame()">🔄 再来一局</button></div>`);
+  G.mode='end';
+}
+
+/* ================= 主循环 ================= */
+let last=performance.now(), animT=0;
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt=Math.min(.05,(now-last)/1000); last=now;
+  animT+=dt;
+  if(G.mode==='play'){
+    let mx=(keys['a']||keys['arrowleft']?-1:0)+(keys['d']||keys['arrowright']?1:0)+joy.dx;
+    let mz=(keys['w']||keys['arrowup']?-1:0)+(keys['s']||keys['arrowdown']?1:0)+joy.dz;
+    const len=Math.hypot(mx,mz);
+    if(len>0){ mx/=Math.max(1,len); mz/=Math.max(1,len);
+      const sp=10;
+      let nx=P.x+mx*sp*dt, nz=P.z+mz*sp*dt;
+      [nx,nz]=collide(nx,nz);
+      P.x=nx; P.z=nz;
+      P.face=Math.atan2(mx,mz);
+    }
+    player.position.set(P.x,0,P.z);
+    player.rotation.y=P.face;
+    const u=player.userData, sw=len>0? Math.sin(animT*13):0;
+    u.aL.rotation.x=sw*.8; u.aR.rotation.x=-sw*.8; u.lL.rotation.x=-sw; u.lR.rotation.x=sw;
+    /* 铜钱 */
+    for(const c of coinEnts){
+      c.m.rotation.z+=3*dt;
+      if(Math.hypot(P.x-c.x,P.z-c.z)<1.4){ scene.remove(c.m); c.dead=true; setCoins(G.coins+1); toast('🪙 +1',500); }
+    }
+    coinEnts=coinEnts.filter(c=>!c.dead);
+    /* 交互提示 */
+    nearThing=findNear();
+    const pr=$('prompt');
+    if(nearThing){ pr.style.display='block'; pr.innerHTML=`按 <b>E</b>（或点"调查"）· ${nearThing.label}`; $('act').disabled=false; }
+    else { pr.style.display='none'; $('act').disabled=true; }
+    /* 信标与箭头 */
+    beacon.rotation.y+=dt;
+    const q=QUESTS[G.q];
+    if(q){ const dx=q.t[0]-P.x, dz=q.t[1]-P.z;
+      arrow.position.set(P.x, 2.9, P.z);
+      arrow.visible=Math.hypot(dx,dz)>7;
+      arrow.rotation.order='YXZ';
+      arrow.rotation.set(Math.PI/2, Math.atan2(dx,dz), 0);
+    }
+    /* 队友小动作 */
+    NPCS.forEach((n,i)=>{ const r=team[n.id]; r.position.y=Math.sin(animT*2+i)*.03; });
+  }
+  /* 相机跟随 */
+  camera.position.x+= (P.x-camera.position.x)*Math.min(1,dt*4);
+  camera.position.z+= (P.z+13-camera.position.z)*Math.min(1,dt*4);
+  camera.position.y+= (13-camera.position.y)*Math.min(1,dt*4);
+  camera.lookAt(P.x, .5, P.z-9);
+  renderer.render(scene,camera);
+}
+requestAnimationFrame(loop);
+
+/* ================= 开始 ================= */
+function startGame(){
+  newGame();
+  P.x=0; P.z=30; P.face=Math.PI;
+  scatterCoins();
+  parkStarted=false; steleSeen=false;
+  $('hud').style.display='flex';
+  setQuest(0);
+  closeUI();
+  toast('🏮 去广场中央的光柱处，找福伯');
+}
+window.startGame=startGame;
+function title(){
+  G.mode='ui';
+  $('hud').style.display='none';
+  ui(`<p class="kicker">奔跑吧 · 城市探索 · 剧本杀</p>
+    <h1 class="brush" style="font-size:54px">黄雀<span>在后</span>·迷城寻踪</h1>
+    <p>百年老字号"德昌号"的老掌柜临终设局：一座暮色中的老城，五处藏着线索的地标，六个各怀心事的人。</p>
+    <p>你是调查员<b>白一鸣</b>。<b class="seal-t">自由探索</b>这座城，在茶馆对暗号、在邮局解藏头诗、在公园按碑文寻宝、在书屋破解密码锁；每一处都可以<b class="seal-t">带一位队友合作</b>——他们各有专长，但其中一人是收了钱的<b class="seal-t">黄雀</b>，ta的"帮忙"里藏着谎话。</p>
+    <p>集齐线索、看穿谎言，终局<b class="seal-t">指认黄雀并布置围捕</b>：堵对ta的逃跑路线，才能撕下ta的名牌。</p>
+    <p class="muted" style="font-size:14px">🐦 黄雀每局随机 · 谎话和证据都会记进你的调查手册</p>
+    <div class="keys">操作：<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>/方向键 走动　<kbd>E</kbd>/<kbd>空格</kbd> 调查　跟着<b style="color:var(--gold)">金色光柱</b>走　路上散落的铜钱记得捡！手机：左下摇杆＋右下"调查"键。</div>
+    <p class="center"><button style="font-size:20px" onclick="startGame()">🏮 入城</button></p>`);
+}
+title();
+</script>

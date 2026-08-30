@@ -1,0 +1,808 @@
+<title>黄雀在后</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;900&display=swap">
+<style>
+  :root{
+    --paper:#EFE6D0; --paper2:#E5D9BC; --ink:#2A241B; --soft:#6A5F48;
+    --seal:#A63325; --gold:#8F6A2A; --line:#C9BB98; --card:#F6EFDE;
+    --ok:#4A6B3A; --bad:#8C2B20;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:"Noto Serif SC",'Songti SC',SimSun,serif;
+    font-size:16px; line-height:1.85; min-height:100vh;
+  }
+  #app{max-width:640px; margin:0 auto; padding:18px 16px 90px}
+  .brush{font-family:"Ma Shan Zheng","Noto Serif SC",serif; font-weight:400}
+  h1.brush{font-size:64px; margin:.2em 0; letter-spacing:.06em; line-height:1.2}
+  h1 span{color:var(--seal)}
+  .kicker{letter-spacing:.3em; font-size:12px; color:var(--gold); margin:0}
+  .muted{color:var(--soft)}
+  .seal-t{color:var(--seal)}
+  .panel{background:var(--card); border:1px solid var(--line); padding:18px 18px; margin:14px 0; box-shadow:0 2px 0 var(--line)}
+  .panel h3{margin:0 0 8px; font-size:17px}
+  button{
+    font-family:inherit; font-size:16px; cursor:pointer;
+    background:var(--ink); color:var(--paper); border:none;
+    padding:10px 22px; margin:6px 6px 6px 0; letter-spacing:.1em;
+  }
+  button:hover{background:var(--seal)}
+  button.alt{background:var(--card); color:var(--ink); border:1px solid var(--ink)}
+  button.alt:hover{background:var(--paper2)}
+  button:disabled{opacity:.4; cursor:default; background:var(--soft)}
+  button:focus-visible{outline:3px solid var(--seal); outline-offset:2px}
+  .opt{display:block; width:100%; text-align:left; background:var(--card); color:var(--ink); border:1px solid var(--line); margin:8px 0; padding:12px 14px}
+  .opt:hover{border-color:var(--seal); background:var(--paper2); color:var(--ink)}
+  .hud{
+    position:fixed; left:0; right:0; bottom:0; background:var(--ink); color:var(--paper);
+    display:flex; justify-content:center; gap:22px; padding:9px 12px; font-size:14px; z-index:50;
+  }
+  .hud b{color:#E8C66B; font-weight:600}
+  .hud .jbtn{background:none; border:1px solid var(--paper); color:var(--paper); padding:2px 12px; margin:0; font-size:13px}
+  .tag{display:inline-block; border:1px solid var(--seal); color:var(--seal); font-size:12px; padding:0 8px; letter-spacing:.15em; margin-bottom:6px}
+  .divider{border:none; border-top:1px dashed var(--line); margin:20px 0}
+  .npc-row{display:flex; gap:10px; flex-wrap:wrap}
+  .npc-btn{flex:1 1 45%; text-align:left; background:var(--card); color:var(--ink); border:1px solid var(--line); padding:10px 12px}
+  .npc-btn small{display:block; color:var(--soft); font-size:12px; letter-spacing:.05em}
+  .npc-btn:hover{border-color:var(--seal); background:var(--paper2); color:var(--ink)}
+  .npc-btn.done{opacity:.45}
+  .dlg{background:var(--paper2); border-left:3px solid var(--seal); padding:12px 14px; margin:10px 0; font-size:15px}
+  .dlg .who{color:var(--seal); font-weight:600}
+  .clue-pop{border:1px solid var(--seal); background:var(--card); padding:12px 14px; margin:12px 0}
+  .clue-pop::before{content:"🔎 线索入册"; display:block; color:var(--seal); font-size:12px; letter-spacing:.2em; margin-bottom:4px}
+  .letter{background:var(--card); border:1px solid var(--line); padding:20px; font-size:15px; position:relative}
+  .letter .sig{text-align:right; color:var(--soft)}
+  .coin-fx{color:var(--gold); font-weight:600}
+  .big{font-size:22px}
+  .center{text-align:center}
+  /* minigames */
+  .phrase-show{font-size:26px; text-align:center; padding:30px 10px; letter-spacing:.1em}
+  .grid{display:grid; grid-template-columns:repeat(6,1fr); gap:6px; user-select:none}
+  .grid button{font-size:26px; padding:8px 0; margin:0; background:var(--card); border:1px solid var(--line)}
+  .grid button.hit{background:var(--seal); border-color:var(--seal)}
+  .grid button.miss{opacity:.35}
+  .statue-stage{text-align:center; padding:10px 0}
+  .statue-face{font-size:56px; line-height:1.2}
+  .statue-word{font-size:22px; min-height:1.5em; letter-spacing:.2em}
+  .pbar{height:16px; background:var(--paper2); border:1px solid var(--line); margin:12px 0; position:relative}
+  .pbar > i{position:absolute; left:0; top:0; bottom:0; background:var(--gold); transition:width .15s}
+  .runbtn{width:70%; padding:18px 0; font-size:20px; user-select:none; touch-action:none}
+  .code-in{font-size:30px; width:8em; text-align:center; letter-spacing:.4em; font-family:inherit; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:8px}
+  .tearbar{height:34px; border:1px solid var(--ink); background:var(--paper2); position:relative; margin:14px 0; overflow:hidden}
+  .tearzone{position:absolute; top:0; bottom:0; background:rgba(166,51,37,.45); border-left:2px solid var(--seal); border-right:2px solid var(--seal)}
+  .tearmark{position:absolute; top:0; bottom:0; width:4px; background:var(--ink)}
+  .hp{font-size:20px; letter-spacing:.2em}
+  .shake{animation:shake .35s}
+  @keyframes shake{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  @media (prefers-reduced-motion: reduce){ .shake{animation:none} }
+  /* journal overlay */
+  #journal{position:fixed; inset:0; background:rgba(26,21,16,.55); display:none; z-index:99}
+  #journal .book{max-width:560px; margin:6vh auto; max-height:82vh; overflow-y:auto; background:var(--paper); border:2px solid var(--ink); padding:20px 22px}
+  #journal h2{margin-top:0}
+  #journal .entry{border-bottom:1px dashed var(--line); padding:8px 0; font-size:14px}
+  #journal .entry b{color:var(--seal); font-weight:600}
+  .fade{animation:fade .5s}
+  @keyframes fade{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none}}
+  @media (prefers-reduced-motion: reduce){ .fade{animation:none} }
+  @media(max-width:480px){ h1.brush{font-size:48px} .npc-btn{flex-basis:100%} .grid{grid-template-columns:repeat(6,1fr)} }
+</style>
+
+<div id="app"></div>
+<div class="hud" id="hud" style="display:none">
+  <span id="hud-stage">第<b>一</b>章</span>
+  <span>🪙 <b id="hud-coin">0</b></span>
+  <span>🔎 线索 <b id="hud-clue">0</b></span>
+  <button class="jbtn" onclick="toggleJournal(true)">📖 手册</button>
+</div>
+<div id="journal" onclick="if(event.target===this)toggleJournal(false)">
+  <div class="book">
+    <h2 class="brush">白一鸣的调查手册</h2>
+    <div id="journal-list"></div>
+    <p class="center"><button class="alt" onclick="toggleJournal(false)">合上手册</button></p>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============ 数据 ============ */
+const NPCS = [
+  {id:'shen', name:'沈见秋', emoji:'🧑‍🎨', job:'德昌号继承人 · 落魄设计师'},
+  {id:'gu',   name:'顾曼芝', emoji:'📷', job:'美食博主 · 80万粉丝'},
+  {id:'tang', name:'汤圆圆', emoji:'🥮', job:'网红甜品店老板娘'},
+  {id:'zheng',name:'郑野',   emoji:'📦', job:'快递驿站站长 · 跑腿王'},
+  {id:'lin',  name:'林晚',   emoji:'💼', job:'味莱集团投资顾问'},
+];
+const byId = id => NPCS.find(n=>n.id===id);
+
+/* 审问库：每人4个话题，按章节解锁；mole=true 时第3/4题换成心虚版 */
+const TALKS = {
+  shen: [
+    {q:'你和老爷子是什么关系？', a:'孙子……吧。他到死也没告诉我这场游戏到底要干嘛。说真的，我连家里有没有那张配方都没见过。'},
+    {q:'二十年前案发时你在哪？', a:'我八岁，在后厨偷吃桂花糕。只记得那年之后爷爷不爱说话了，铺子一天比一天冷清。'},
+    {q:'我看见你往内袋塞了张纸。你在藏什么？',
+     a:'……行，瞒不住你。是一张1998年的收养公证书——我不是沈家亲生的。遗嘱写"沈氏后人"才能继承，你说我慌不慌？但我发誓，我没做过对不起德昌号的事。',
+     am:'纸？哪有什么纸，你看错了。……好了别盯着我，就是一张房租催缴单，丢人，行了吧？（他的眼神在躲你）',
+     note:'沈见秋坦白：他是养子，怕失去继承权——秘密对上了，他内袋的纸有了解释。',
+     noteM:'沈见秋否认藏纸，但你分明看见了。他在撒谎。'},
+    {q:'第四关解谜的时候，你的手机一直亮着。',
+     a:'我在查"收养关系能不能继承遗产"……喏，律师咨询记录都在，你自己看。（记录时间对得上）',
+     am:'我在拍纪念照啊，大家不都拍吗？（他飞快地锁了屏，手指有点抖）',
+     note:'沈见秋的手机记录能对上，嫌疑下降。',
+     noteM:'沈见秋不敢给你看手机。第四关，正是配方现身的时刻。'},
+  ],
+  gu: [
+    {q:'你是第一次来这座城？', a:'对啊，探店博主嘛，哪里有流量去哪里。（她的目光越过你，落在老街尽头）……这条街的糖炒栗子，冬天排队要排一小时。——第一次来的人，不会知道这个。你把这条记在了心里。'},
+    {q:'二十年前的失窃案，你怎么看？', a:'（她的声音冷下来）报纸写"学徒顾某"，你们就都信了？没有判决、没有证据，一个人的名声就这么没了。……我是说，假如。假如他是冤枉的呢？'},
+    {q:'你姓顾。和当年的学徒顾守拙，什么关系？',
+     a:'……是。他是我父亲。他到死都在念"沈老爷子心里清楚"。白先生，你父亲当年是不是也不肯结案？帮我。我要的不是宝藏，是翻案。',
+     am:'天下姓顾的多了。（她笑得无懈可击）别用你那套审人的眼神看我，我只是个拍视频的。',
+     note:'顾曼芝亮明身世：她是顾守拙之女，回来翻案——她的反常都有了解释。',
+     noteM:'顾曼芝矢口否认与顾守拙的关系，可她连门槛上的旧记号都认得。'},
+    {q:'你在老门槛上摸的那个记号，是什么？',
+     a:'我六岁那年刻的身高线。还在。（她别过脸去）二十年了，居然还在。',
+     am:'什么记号？哦，我看看有没有虫蛀。老木头嘛，拍视频要讲细节。（她今天一条视频都没拍）',
+     note:'门槛上的身高线：她童年在这里长大，证词自洽。',
+     noteM:'她说在"拍视频找细节"——但她今天根本没开过相机。'},
+  ],
+  tang: [
+    {q:'你的手艺是哪儿学的？', a:'奶奶教的！她说年轻时跟过一位大师傅，但从来不肯说是谁。食评人说我做的是"德昌味"，我自己也莫名其妙。'},
+    {q:'最近有人找你买过配方吗？', a:'（她一愣）你怎么知道？！上个月真有个电话，自称什么食品集团，开口就是七位数。我挂了。奶奶说过这东西不能卖……哎呀，我是说，假如我有的话！'},
+    {q:'你包里那角黄纸是什么？',
+     a:'（她犹豫了很久）……半张旧配方。奶奶临终交给我的，说是"德昌号故人"之物，要等持另一半的人来。你别说出去——我总觉得，今天有人一直在打这半张的主意。',
+     am:'是……是我家新品的包装纸！打样的！（她把包抱得死紧，指节都白了）',
+     note:'汤圆圆坦白：她持有半张旧配方，是汤婆婆守了二十年的托付。',
+     noteM:'汤圆圆藏着的绝不是包装纸。她为什么连你也要瞒？'},
+    {q:'配方拼合之后，还有人向你打听过它吗？',
+     a:'有！有人问我"拼好的配方最后放谁那儿保管"，问得可自然了……让我想想是谁来着——（远处忽然有人喊集合，她的话被打断了）',
+     am:'没有没有，大家都可尊重我了，谁会打听这个呀。（她回答得太快了）',
+     note:'有人在打听配方的下落。打听的人，就是伸手的人。',
+     noteM:'她说"没人打听配方"——可你亲耳听见有人问过她。她在替谁遮掩，还是在替自己？'},
+  ],
+  zheng: [
+    {q:'老爷子为什么指定你做后勤？', a:'我给德昌号送了七年件呗！老爷子人好，每年冬天给驿站送姜茶。他走那天，我还去上了香。（他嗓门很大，眼圈却红了）'},
+    {q:'二十年前你在哪儿？', a:'那会儿我才九岁，在老家。不过这案子街坊传了二十年——一半人说是学徒偷的，另一半人说邪门：锁都没坏，偷个啥？'},
+    {q:'你最近手头，好像很宽裕。',
+     a:'（他挠头）让你看出来了……上周还清了驿站欠的租金。旺季跑出来的辛苦钱，加上我媳妇打工寄的。欠债的日子，不想再过了。（他给你看了流水，一笔一笔，都是小钱攒的）',
+     am:'宽裕啥呀，我穷得叮当响！（他下意识按住了口袋）别打听兄弟的钱包，伤感情。',
+     note:'郑野的钱来路清白：跑腿攒的辛苦钱。汉子不容易。',
+     noteM:'郑野一边哭穷，一边按住口袋。上周还清的那笔巨款，辛苦钱攒不出来。'},
+    {q:'转场时你接的那个电话，还有那只信封？',
+     a:'代收的货款！跑腿的啥都替人办。喏，代收单都在。（他真掏出一张皱巴巴的单子，日期金额都对得上）',
+     am:'信封？……哦，客户给的喜糖！发你一颗？（信封的厚度，不像喜糖）',
+     note:'信封是代收货款，有单据。郑野的嫌疑解除了一半。',
+     noteM:'他说信封里是喜糖。那封"喜糖"，厚得像一沓现金。'},
+  ],
+  lin: [
+    {q:'味莱对德昌号，志在必得？', a:'商业机密。（职业假笑）不过明人不说暗话：我就是来收购德昌号的，合同就在包里。你们可以讨厌我——但我至少是场上唯一亮明来意的人。'},
+    {q:'"莱记商行"，听说过吗？', a:'（她的笔尖停了一秒）……做尽调的都查得到，味莱的前身。2006年和德昌号有过原料纠纷。再深的，恕我无可奉告——不是不想说，是说了我就得失业。'},
+    {q:'你笔记本里夹着的那份文件是什么？',
+     a:'收购合同，只差沈先生签字。……还有一份复印件。（她看了你很久）白先生，如果——我是说如果——有一份能证明当年是莱记做局的旧台账，你觉得它该重见天日，还是烂在档案库里？',
+     am:'客户资料，保密条款，无可奉告。（她把包换到了另一边肩膀）',
+     note:'林晚在动摇：她手里似乎握着味莱当年做局的证据。她不像"其他人"。',
+     noteM:'林晚对那份文件讳莫如深，连"合同"两个字都不肯提了。'},
+    {q:'公司派你来，只是为了谈收购？',
+     a:'行前会上，上司说过一句话："其他的事，有其他人办。"我不知道那个"其他人"是谁——但白先生，我劝你快点查出来。这场游戏里，比我危险的人，还有一个。',
+     am:'只是收购。纯粹的、干净的、写在合同里的收购。（她把"干净"两个字，咬得太重了）',
+     note:'林晚警告你：味莱在场上还有一条暗线。"其他人"，就是黄雀。',
+     noteM:'她反复强调自己"干净"。没人问她干不干净。'},
+  ],
+};
+
+/* 真观察（指向黄雀，{M}替换） */
+const TRUE_OBS = [
+  '寻物挑战时，你从取景框里瞥见：{M}躲在邮筒后面，对着别人手里的线索纸拍照——那不是自拍的角度。',
+  '排队时{M}的手机亮了一下。你眼角扫到一条到账通知，金额是六位数，付款方名称被拇指飞快地盖住了。',
+  '转场的巷口，{M}落在队尾低声打电话："东西……快到手了。"看见你回头，立刻改口聊起了天气。',
+];
+/* 红鲱鱼（各自的可疑行为，审问第3/4题可洗清） */
+const HERRINGS = {
+  shen:'沈见秋趁人不备，把一张对折的旧纸塞回内袋，神色慌张——那不是线索卡。',
+  gu:'顾曼芝在德昌号的老门槛前蹲了很久，手指在木头上摩挲，像在找一个只有她知道的记号。',
+  tang:'汤圆圆的帆布包里露出一角泛黄的纸，她一发现你在看，立刻把包抱到了胸前。',
+  zheng:'郑野接了个电话就走远了，回来时上衣口袋里多了一只鼓鼓囊囊的信封。',
+  lin:'讨论线索时，林晚全程在记笔记。那个本子里，夹着一份盖了红章的文件。',
+};
+/* 黄雀动机（结局揭晓用） */
+const MOTIVES = {
+  shen:'压垮他的，是樟木箱底那张收养公证书。"沈氏后人"四个字判了他出局——既然注定一无所有，不如先卖个好价钱。味莱开价的那个晚上，他盯着天花板到天亮。',
+  gu:'她恨错了方向。翻案无门，她决定让沈家也尝尝身败名裂的滋味——把配方交给味莱，让德昌号的招牌当众砸碎。味莱只是递刀的人，握刀的是二十年的怨。',
+  tang:'七位数的报价，第一通电话她挂了。第二通，她没挂。网红店扩张欠下的三家供应商货款，比奶奶临终的嘱托，声音更响。',
+  zheng:'十八万的债、平台的抽成、老家的娃。味莱的"周先生"只用了一顿茶的功夫，就买走了老街最热心的野哥。五十万，一个驿站站长十年也攒不出来。',
+  lin:'明面谈收购，只是幌子——她自己就是上司口中的"其他人"。第十二盏老字号的灯，她要亲手关掉，换一间合伙人办公室。',
+};
+
+/* ============ 状态 ============ */
+let S = null;
+function newGame(){
+  S = {
+    ch:0, coins:0, charm:false,
+    mole: NPCS[Math.floor(Math.random()*NPCS.length)].id,
+    clues:[], talked:{}, obsShown:[], trueObsSeen:0,
+    asked:{},   // asked[npcid] = [topicIdx...]
+  };
+}
+function addCoins(n){ S.coins+=n; refreshHud(); }
+function addClue(title, body){
+  S.clues.push({t:title, b:body}); refreshHud();
+}
+function refreshHud(){
+  document.getElementById('hud').style.display='flex';
+  document.getElementById('hud-stage').innerHTML = S.ch>=5 ? '<b>终局</b>' : `第<b>${['一','一','二','三','四'][S.ch]||'一'}</b>章`;
+  document.getElementById('hud-coin').textContent = S.coins;
+  document.getElementById('hud-clue').textContent = S.clues.length;
+}
+function toggleJournal(show){
+  const j=document.getElementById('journal');
+  if(show){
+    const list=document.getElementById('journal-list');
+    list.innerHTML = S && S.clues.length
+      ? S.clues.map(c=>`<div class="entry"><b>${c.t}</b><br>${c.b}</div>`).join('')
+      : '<p class="muted">手册还是空的。父亲说过：先看，再问，最后才下结论。</p>';
+    j.style.display='block';
+  } else j.style.display='none';
+}
+const app = document.getElementById('app');
+function render(html){ app.innerHTML = `<div class="fade">${html}</div>`; window.scrollTo(0,0); }
+function esc(fn){ window._n = fn; }
+function moleName(){ return byId(S.mole).name; }
+
+/* ============ 屏幕流 ============ */
+function title(){
+  document.getElementById('hud').style.display='none';
+  render(`
+    <div class="center" style="padding-top:6vh">
+      <p class="kicker">城市实景剧本杀 · 线上版</p>
+      <h1 class="brush">黄雀<span>在后</span></h1>
+      <p class="muted" style="max-width:30em;margin:0 auto">百年老字号"德昌号"的老掌柜临终设局。<br>六个人被请柬召集，其中一个，是收了钱的内鬼。<br><b class="seal-t">每一局，黄雀都是随机的。</b></p>
+      <div style="margin-top:30px">
+        <button class="big" onclick="prologue()">🕯️ 开始调查</button>
+      </div>
+      <p class="muted" style="font-size:13px;margin-top:26px">你将扮演调查员 白一鸣 · 单人可玩 · 约20分钟一局</p>
+    </div>`);
+}
+
+function prologue(){
+  newGame(); refreshHud();
+  render(`
+    <span class="tag">序章 · 请柬</span>
+    <div class="letter">
+      「敬启者：德昌号百年基业，止于我手，愧对先人。<br>
+      今设一局，藏物于城，得之者，承我衣钵。<br>
+      四月十七，巳时，老街集合，逾时不候。<br>
+      另：<b class="seal-t">螳螂捕蝉，黄雀在后。我请来的人里，有一只黄雀。</b>」
+      <p class="sig">——沈德昌 绝笔</p>
+    </div>
+    <p>你是<b>白一鸣</b>，前辅警，现在的民间调查员。你的父亲白国安，是二十年前"德昌号配方失窃案"的办案警察——那桩没能结案的悬案，是他一辈子的心病。</p>
+    <p>父亲留下的笔记本，最后一页写着：<b class="seal-t">"现场系伪造。存疑：报案人。愧对顾。"</b></p>
+    <p>老掌柜死后，请柬点名请来了六个人。你要在这场"寻宝游戏"里替父亲结案——顺便，揪出那只黄雀。</p>
+    <div class="panel">
+      <h3>同行的五个人</h3>
+      ${NPCS.map(n=>`<div style="padding:4px 0">${n.emoji} <b>${n.name}</b> <span class="muted" style="font-size:13px">${n.job}</span></div>`).join('')}
+    </div>
+    <p class="muted" style="font-size:14px">🔎 玩法：每章先完成挑战赢金币，再选人审问收集线索。终局你只有一次指认机会——指错了，就是第二次冤案。</p>
+    <div class="center"><button onclick="ch1()">出发 → 第一关 · 茶馆</button></div>
+  `);
+  addClue('父亲的笔记', '"现场系伪造。存疑：报案人。愧对顾。"——二十年前的失窃案，另有隐情。');
+}
+
+/* ---------- 第一章：传声筒 ---------- */
+const G1 = [
+  {orig:'桂花蜜里有蹊跷', opts:['桂花蜜里有奇效','桂花糕里有蹊跷','桂花蜜里有蹊跷','桂花蜜里没蹊跷']},
+  {orig:'锁没有撬痕', opts:['锁没有裂痕','锁没有撬痕','门没有撬痕','锁留有撬痕']},
+  {orig:'学徒的眼睛不躲人', opts:['学徒的眼睛不躲人','学徒的眼神会躲人','师傅的眼睛不躲人','学徒的眼睛不看人']},
+];
+let g1i=0, g1score=0;
+function ch1(){
+  S.ch=1; refreshHud(); g1i=0; g1score=0;
+  render(`
+    <span class="tag">第一关 · 茶馆 · 传声辨曲直</span>
+    <p>管家福伯把六人聚在茶馆："老爷子说，德昌号毁于<b>人言</b>。一句话过十张嘴，会变成什么样？"</p>
+    <p>规则：原话只显示<b>两秒</b>，随后混进三句被"传歪"的话。<b class="seal-t">认出原话</b>，每中一句 +1🪙，全中额外 +1🪙。</p>
+    <div class="center"><button onclick="g1round()">听第一句 →</button></div>
+  `);
+}
+function g1round(){
+  const r=G1[g1i];
+  render(`<span class="tag">第 ${g1i+1} / 3 句</span><div class="phrase-show">「${r.orig}」</div><p class="center muted">记住它——</p>`);
+  setTimeout(()=>{
+    const opts=[...r.opts].sort(()=>Math.random()-.5);
+    render(`
+      <span class="tag">第 ${g1i+1} / 3 句 · 过了十张嘴之后</span>
+      <p>哪一句才是<b class="seal-t">原话</b>？</p>
+      ${opts.map(o=>`<button class="opt" onclick="g1pick('${o}')">「${o}」</button>`).join('')}
+    `);
+  }, 2000);
+}
+function g1pick(o){
+  const r=G1[g1i]; const ok = o===r.orig;
+  if(ok) g1score++;
+  g1i++;
+  const fb = ok?`<p class="seal-t">✔ 没被流言带偏。<span class="coin-fx">+1🪙</span></p>`:`<p class="muted">✘ 原话是「${r.orig}」。流言就是这么赢的。</p>`;
+  if(ok) addCoins(1);
+  if(g1i<3){
+    render(fb+`<div class="center"><button onclick="g1round()">下一句 →</button></div>`);
+  } else {
+    let bonus = g1score===3 ? 1:0; if(bonus) addCoins(1);
+    render(`
+      ${fb}
+      <hr class="divider">
+      <p><b>结算：</b>${g1score}/3 ${bonus?'· 全中！<span class="coin-fx">额外+1🪙</span>':''}</p>
+      <p>福伯点点头，从怀里取出一张发脆的旧报纸：</p>
+      <div class="letter">「<b>百年德昌号祖传配方失窃 学徒顾某涉重大嫌疑</b>」<br>
+      <span class="muted" style="font-size:14px">……办案民警<b>白国安</b>表示："目前证据不足，不对任何人定性。"角落里有一则小广告：<b class="seal-t">"莱记商行——南北干货，蜜饯糖料。"</b></span></div>
+      <p>父亲的名字印在二十年前的头版上。你把报纸抄进了手册。</p>
+      <div class="center"><button onclick="invest(1, 'ch2')">开始审问（本章可问2人）→</button></div>
+    `);
+    addClue('线索一 · 2006年报纸','失窃案头版。嫌疑指向学徒"顾某"；办案人是你父亲；角落里有"莱记商行"的广告。');
+  }
+}
+
+/* ---------- 通用审问环节 ---------- */
+let invLeft=0, invNext='';
+function invest(ch, next){
+  invLeft = 2; invNext = next;
+  investMenu();
+}
+function investMenu(){
+  const unlocked = S.ch; // 章节数=解锁话题深度
+  if(invLeft<=0){ afterInvest(); return; }
+  render(`
+    <span class="tag">审问 · 还能问 ${invLeft} 人</span>
+    <p class="muted" style="font-size:14px">章节越深，能问的问题越尖锐。问谁？</p>
+    <div class="npc-row">
+      ${NPCS.map(n=>{
+        const asked=(S.asked[n.id]||[]);
+        return `<button class="npc-btn" onclick="askWho('${n.id}')">${n.emoji} <b>${n.name}</b><small>${n.job}</small><small>已问过 ${asked.length}/${Math.min(unlocked,4)} 题</small></button>`;
+      }).join('')}
+    </div>
+    <p class="center"><button class="alt" onclick="afterInvest()">不问了，继续赶路 →</button></p>
+  `);
+}
+function askWho(id){
+  const n=byId(id); const unlocked=Math.min(S.ch,4);
+  const asked=S.asked[id]||[];
+  const avail=[];
+  for(let i=0;i<unlocked;i++) if(!asked.includes(i)) avail.push(i);
+  if(!avail.length){
+    render(`<p class="muted">${n.name}摆摆手："白先生，该说的我都说啦。"</p><div class="center"><button onclick="investMenu()">← 换个人</button></div>`);
+    return;
+  }
+  render(`
+    <span class="tag">审问 · ${n.emoji} ${n.name}</span>
+    ${avail.map(i=>`<button class="opt" onclick="askQ('${id}',${i})">「${TALKS[id][i].q}」</button>`).join('')}
+    <p class="center"><button class="alt" onclick="investMenu()">← 换个人</button></p>
+  `);
+}
+function askQ(id,i){
+  const n=byId(id); const t=TALKS[id][i];
+  (S.asked[id]=S.asked[id]||[]).push(i);
+  invLeft--;
+  const isMole = S.mole===id;
+  const ans = (isMole && t.am) ? t.am : t.a;
+  const note = (i>=2) ? ((isMole? t.noteM : t.note)||null) : null;
+  if(note) addClue(`审问 · ${n.name}`, note);
+  render(`
+    <span class="tag">审问 · ${n.emoji} ${n.name}</span>
+    <div class="dlg"><span class="who">白一鸣：</span>「${t.q}」</div>
+    <div class="dlg"><span class="who">${n.name}：</span>「${ans}」</div>
+    ${note?`<div class="clue-pop">${note}</div>`:''}
+    <div class="center"><button onclick="investMenu()">${invLeft>0?'继续审问 →':'审问结束 →'}</button></div>
+  `);
+}
+function afterInvest(){
+  // 章末观察事件
+  const obs = pickObservation();
+  const go = `window['${invNext}']()`;
+  if(obs){
+    render(`
+      <span class="tag">转场 · 你的职业病发作了</span>
+      <div class="clue-pop">${obs}</div>
+      <p class="muted" style="font-size:14px">父亲说过：小偷的眼睛是躲人的。可疑的行为，未必都是贼——去审问里求证。</p>
+      <div class="center"><button onclick="${go}">继续 →</button></div>
+    `);
+  } else {
+    setTimeout(()=>window[invNext](),0);
+  }
+}
+function pickObservation(){
+  // 计划：ch1 红鲱鱼A，ch2 真观察1，ch3 红鲱鱼B，ch4 真观察2（真3留给情报卡）
+  const innocents = NPCS.filter(n=>n.id!==S.mole).map(n=>n.id);
+  const plan = S.ch;
+  let text=null;
+  if(plan===1 || plan===3){
+    const pool = innocents.filter(id=>!S.obsShown.includes('H'+id));
+    if(pool.length){
+      const id = pool[Math.floor(Math.random()*pool.length)];
+      S.obsShown.push('H'+id); text = HERRINGS[id];
+    }
+  } else if(plan===2 || plan===4){
+    if(S.trueObsSeen < TRUE_OBS.length){
+      text = TRUE_OBS[S.trueObsSeen].replaceAll('{M}', moleName());
+      S.trueObsSeen++; S.obsShown.push('T'+S.trueObsSeen);
+    }
+  }
+  if(text) addClue('观察记录', text);
+  return text;
+}
+
+/* ---------- 第二章：寻物 ---------- */
+const G2_TARGETS=['🏮','🐦','🧧','🥮','📮'];
+const G2_DECOYS=['🚲','🐈','☂️','🪴','🧹','🫖','📻','👞','🧺','🪑','🐕','🎐','🥡','📚','🧵','🪞','🍂','🚪','🕰️','🧤','🥢','🎏','🪣','🍶','🧯','🛵','🗞️','🪀','🎈','🧊','🍡','🫙','🪶','🍵','⛱️','🥻','🎠','🧶','🚏','🪜','🍯','🏺','🎋'];
+let g2found=0, g2timer=null, g2time=30;
+function ch2(){
+  S.ch=2; refreshHud();
+  render(`
+    <span class="tag">第二关 · 老街 · 城市寻旧物</span>
+    <p>福伯："老爷子晚年满城拍老物件。他说，<b>东西不会说谎，人才会。</b>"</p>
+    <p>在老街里找出这五样：<span class="big">🏮 🐦 🧧 🥮 📮</span><br><span class="muted" style="font-size:14px">灯笼、雀鸟、福字红包、点心、老邮筒 · 限时30秒 · 每找到一样 +1🪙，全找到额外 +1🪙</span></p>
+    <div class="center"><button onclick="g2start()">开找！</button></div>
+  `);
+}
+function g2start(){
+  g2found=0; g2time=30;
+  const cells=[...G2_TARGETS, ...G2_DECOYS.sort(()=>Math.random()-.5).slice(0,43)].sort(()=>Math.random()-.5);
+  render(`
+    <span class="tag">寻物中 · 剩余 <span id="g2t">30</span> 秒 · 已找到 <span id="g2f">0</span>/5</span>
+    <div class="grid">${cells.map((c,idx)=>`<button id="c${idx}" onclick="g2click(this,'${c}')">${c}</button>`).join('')}</div>
+  `);
+  g2timer=setInterval(()=>{
+    g2time--;
+    const el=document.getElementById('g2t');
+    if(el) el.textContent=g2time;
+    if(g2time<=0) g2end();
+  },1000);
+}
+function g2click(btn, c){
+  if(G2_TARGETS.includes(c) && !btn.classList.contains('hit')){
+    btn.classList.add('hit'); g2found++; addCoins(1);
+    const el=document.getElementById('g2f'); if(el) el.textContent=g2found;
+    if(g2found>=5) g2end();
+  } else if(!G2_TARGETS.includes(c)){
+    btn.classList.add('miss');
+  }
+}
+function g2end(){
+  clearInterval(g2timer);
+  const perfect = g2found>=5; if(perfect) addCoins(1);
+  render(`
+    <p><b>结算：</b>找到 ${g2found}/5 ${perfect?'· 火眼金睛！<span class="coin-fx">额外+1🪙</span>':''}</p>
+    <p>福伯递来一封信："老爷子病重时写的。他说——<b class="seal-t">聪明人，竖着读。</b>"</p>
+    <div class="letter">
+      <b>黄</b>铜锁扣自内落，<br><b>雀</b>衔桂枝印火漆。<br><b>在</b>案卷上蒙尘者，<br><b>身</b>负污名二十载。<br><b>边</b>角账页留半纸，静待后来人拾。
+      <p class="sig">——沈德昌</p>
+    </div>
+    <p>竖着读第一列：<b class="seal-t big">黄 雀 在 身 边</b>。</p>
+    <p>老掌柜早就知道会有内鬼。还有一句扎眼的——"锁扣<b>自内</b>落"。和父亲笔记里"现场系伪造"，对上了。</p>
+    <div class="center"><button onclick="invest(2,'ch3')">开始审问 →</button></div>
+  `);
+  addClue('线索二 · 藏头诗','竖读为"黄雀在身边"——内鬼确凿存在。"锁扣自内落"：当年根本没有外贼。');
+}
+
+/* ---------- 第三章：一二三老掌柜 ---------- */
+let g3prog=0, g3state='safe', g3hold=false, g3loop=null, g3t0=0, g3timeout=null;
+function ch3(){
+  S.ch=3; refreshHud();
+  render(`
+    <span class="tag">第三关 · 公园 · 一二三，老掌柜</span>
+    <p>福伯背过身去，扮起了老掌柜："做点心和做人一样，讲究一个<b>站得住</b>。"</p>
+    <p>规则：<b>按住"跑"</b>前进。听到"桂花——"就准备，<b class="seal-t">"糕！"落下时他会回头</b>——那一瞬间还按着，就要被抓回起点线。跑满100米过关。越快，金币越多（4/3/2🪙）。</p>
+    <div class="center"><button onclick="g3start()">上跑道</button></div>
+  `);
+}
+function g3start(){
+  g3prog=0; g3state='safe'; g3hold=false; g3t0=Date.now();
+  render(`
+    <div class="statue-stage">
+      <div class="statue-face" id="g3face">🙈</div>
+      <div class="statue-word" id="g3word">「一、二、三——」（跑！）</div>
+      <div class="pbar"><i id="g3bar" style="width:0%"></i></div>
+      <p class="muted" style="font-size:13px">已跑 <span id="g3m">0</span> / 100 米 · 用时 <span id="g3s">0</span>s</p>
+      <button class="runbtn" id="g3btn">按住跑 🏃</button>
+    </div>
+  `);
+  const btn=document.getElementById('g3btn');
+  const down=e=>{e.preventDefault(); g3hold=true;};
+  const up=e=>{e.preventDefault(); g3hold=false;};
+  btn.addEventListener('pointerdown',down);
+  btn.addEventListener('pointerup',up);
+  btn.addEventListener('pointerleave',up);
+  g3loop=setInterval(()=>{
+    if(g3state==='safe' && g3hold){ g3prog=Math.min(100,g3prog+2.0); }
+    if(g3state==='turned' && g3hold){
+      g3prog=Math.max(0,g3prog-25); g3hold=false;
+      const st=document.querySelector('.statue-stage'); if(st){st.classList.remove('shake'); void st.offsetWidth; st.classList.add('shake');}
+      const w=document.getElementById('g3word'); if(w) w.textContent='「抓到你啦！退回去！」';
+    }
+    const bar=document.getElementById('g3bar'), m=document.getElementById('g3m'), s=document.getElementById('g3s');
+    if(bar) bar.style.width=g3prog+'%';
+    if(m) m.textContent=Math.round(g3prog);
+    if(s) s.textContent=Math.round((Date.now()-g3t0)/1000);
+    if(g3prog>=100) g3win();
+  },100);
+  g3cycle();
+}
+function g3cycle(){
+  if(g3prog>=100) return;
+  g3state='safe';
+  setFace('🙈','「一、二、三——」（跑！）');
+  g3timeout=setTimeout(()=>{
+    if(g3prog>=100) return;
+    setFace('🫣','「桂花——」（要回头了！）');
+    g3timeout=setTimeout(()=>{
+      if(g3prog>=100) return;
+      g3state='turned';
+      setFace('👀','「糕！」（他回头了，别动！）');
+      g3timeout=setTimeout(g3cycle, 900+Math.random()*900);
+    }, 450+Math.random()*350);
+  }, 1100+Math.random()*1500);
+}
+function setFace(f,w){
+  const a=document.getElementById('g3face'), b=document.getElementById('g3word');
+  if(a) a.textContent=f; if(b) b.textContent=w;
+}
+function g3win(){
+  clearInterval(g3loop); clearTimeout(g3timeout); g3loop=null;
+  const sec=Math.round((Date.now()-g3t0)/1000);
+  const coin = sec<=25?4: sec<=40?3:2;
+  addCoins(coin);
+  render(`
+    <p><b>冲线！</b>用时 ${sec} 秒 <span class="coin-fx">+${coin}🪙</span></p>
+    <p>福伯转过身，不再是游戏里的表情："好快的手脚。二十年前要有你这身手，贼都进不了德昌号——<b class="seal-t">如果真有贼的话。</b>"</p>
+    <p>他从相册里抽出一页焦黄的账本残页：</p>
+    <div class="letter">
+      丙戌年（2006）四月<br>
+      4月10日　莱记 桂花蜜 廿坛 入库　付讫<br>
+      <b>4月14日　莱记 桂花蜜 廿坛——退</b>（未收退款）<br>
+      4月15日　送 检〔后字被墨涂去〕<br>
+      <span class="muted">页脚朱笔小字：「蜜不对。守拙验出来的。<b class="seal-t">蝉不知螳螂——螳螂，也未必知道树后头的东西。</b>」</span>
+    </div>
+    <p>案发前三天，德昌号把莱记的桂花蜜整批退了货，还送了检。<b>莱记</b>——报纸角落那个广告，又出现了。</p>
+    <div class="center"><button onclick="invest(3,'ch4')">开始审问 →</button></div>
+  `);
+  addClue('线索三 · 账本残页','案发前3天：德昌号退掉莱记桂花蜜廿坛并送检。朱批"蝉不知螳螂"——螳螂捕蝉，黄雀在后。');
+}
+
+/* ---------- 第四章：密码箱 ---------- */
+let g4tries=3;
+function ch4(){
+  S.ch=4; refreshHud(); g4tries=3;
+  render(`
+    <span class="tag">第四关 · 书店 · 四一七之匣</span>
+    <p>福伯把一只铁匣放在桌上："打开它的钥匙，不是铜的，是<b>记性</b>。"</p>
+    <div class="letter">「头版记得那一天，请柬写着那一天，<br>我亲手落锁，也是那一天。<br><b>月在前，日在后。</b>三次机会，好自为之。」</div>
+    <p class="muted" style="font-size:14px">提示藏在你已有的线索里（可随时翻📖手册）。首试即中 +4🪙，次试 +3🪙，三试 +2🪙。</p>
+    <div class="center">
+      <input class="code-in" id="g4in" inputmode="numeric" maxlength="4" placeholder="····" aria-label="四位密码">
+      <p><button onclick="g4try()">开锁</button></p>
+      <p id="g4msg" class="muted"></p>
+    </div>
+  `);
+}
+function g4try(){
+  const v=document.getElementById('g4in').value.trim();
+  if(!/^\d{4}$/.test(v)){ document.getElementById('g4msg').textContent='要四位数字。'; return; }
+  if(v==='0417'){
+    const coin=[0,2,3,4][g4tries]; addCoins(coin);
+    g4open(`咔哒。锁开了。<span class="coin-fx">+${coin}🪙</span>`);
+  } else {
+    g4tries--;
+    if(g4tries<=0){
+      g4open('三次都错了。福伯叹口气，摸出备用钥匙打开了匣子——"老爷子说，记性不好的人，也配知道真相，只是不配拿彩头。"（+0🪙）');
+    } else {
+      const el=document.getElementById('g4msg');
+      el.innerHTML=`纹丝不动。还剩 <b>${g4tries}</b> 次。<span class="muted">（那一天……报纸、请柬上都写着）</span>`;
+    }
+  }
+}
+function g4open(head){
+  render(`
+    <p>${head}</p>
+    <p>匣子里是两样东西——</p>
+    <div class="letter">
+      <b>市食品卫生检验所 检验报告单</b>　编号 06-0416-27<br>
+      送检日期：2006年4月16日　送检人：<b>沈德昌</b><br>
+      样品：桂花蜜（供货方：<b>莱记商行</b>）<br>
+      结论：检出禁用工业增香剂，<b class="seal-t">致敏性物质超标十二倍</b>，不得用于食品。
+    </div>
+    <div class="letter">
+      <b>德昌桂花糕 · 改方（下半阙）</b>　〔撕口处有半枚衔桂雀鸟火漆印〕<br>
+      <span class="muted">背面小字：「上半阙托付故人。持之来见者，即我故人。」</span>
+    </div>
+    <p>送检日4月16，"失窃"日4月17。<b class="seal-t">先知道蜜有毒，后"丢"了配方。</b></p>
+    <p>你终于看清了全局：莱记掉包投毒 → 老掌柜将计就计，<b>自导自演失窃案</b>，把配方藏起来绝了贼心——却让学徒顾守拙背了二十年黑锅。这就是父亲写下"存疑：报案人"的原因。</p>
+    <p>案子结了。<b>但黄雀还没抓到。</b>味莱的人此刻就在你身边，盯着这半张配方。</p>
+    <div class="center"><button onclick="invest(4,'finale')">最后一轮审问 →</button></div>
+  `);
+  addClue('线索四 · 检验单与半张配方','莱记的蜜有毒，超标十二倍。失窃案是老掌柜自导自演——为护配方，冤了学徒。二十年悬案告破。');
+}
+
+/* ---------- 终局 ---------- */
+function finale(){
+  S.ch=5; refreshHud();
+  render(`
+    <span class="tag">终局 · 广场 · 雀之战</span>
+    <p>宝箱找到了。福伯却按住箱盖："老爷子的规矩——<b class="seal-t">开箱之前，先清门户。</b>黄雀不除，箱子不开。"</p>
+    <p>指认之前，管家商店最后开张。你有 <b class="coin-fx">${S.coins}🪙</b>。</p>
+    <div class="panel">
+      <h3>🏮 管家商店</h3>
+      <button class="opt" onclick="buyIntel()">🕵️ 情报卡（3🪙）—— 福伯的耳朵比你想的灵</button>
+      <button class="opt" onclick="buyCharm()" ${S.charm?'disabled':''}>🧿 护身符（5🪙）—— 撕名牌战中免死一次 ${S.charm?'（已购）':''}</button>
+      <button class="opt" onclick="buyCake()">🥮 桂花糕（1🪙）—— 压压惊</button>
+    </div>
+    <div class="center"><button class="big" onclick="accuseMenu()">我准备好指认了 →</button></div>
+  `);
+}
+function buyIntel(){
+  if(S.coins<3){ flashMsg('铜钱不够。'); return; }
+  S.coins-=3; refreshHud();
+  let text;
+  if(S.trueObsSeen < TRUE_OBS.length){
+    text = TRUE_OBS[S.trueObsSeen].replaceAll('{M}', moleName());
+    S.trueObsSeen++;
+  } else {
+    text = `福伯压低声音："白先生，老爷子只交代了一句——<b>留心那个最不缺钱、又最喊穷的人。</b>"`;
+  }
+  addClue('情报卡', text.replace(/<[^>]+>/g,''));
+  render(`
+    <span class="tag">情报卡</span>
+    <div class="clue-pop">${text}</div>
+    <div class="center"><button onclick="finale()">← 回到商店</button></div>
+  `);
+}
+function buyCharm(){
+  if(S.coins<5){ flashMsg('铜钱不够。'); return; }
+  S.coins-=5; S.charm=true; refreshHud(); finale();
+}
+function buyCake(){
+  if(S.coins<1){ flashMsg('连一块糕都买不起了。'); return; }
+  S.coins-=1; refreshHud();
+  render(`<p>还是当年的三蒸三晾。你想起父亲说过，结案那天要吃点甜的。<b>快了。</b></p><div class="center"><button onclick="finale()">← 回到商店</button></div>`);
+}
+function flashMsg(m){
+  const el=document.createElement('p'); el.className='muted center'; el.textContent=m;
+  app.firstChild.appendChild(el);
+}
+function accuseMenu(){
+  render(`
+    <span class="tag">指认 · 你只有一次机会</span>
+    <p>五个人站成一排。福伯说："白警官当年不肯错判一个人。<b class="seal-t">白先生，轮到你了。</b>"</p>
+    <p class="muted" style="font-size:14px">翻翻📖手册再决定。谁的说辞对不上？谁在钱上说了谎？</p>
+    <div class="npc-row">
+      ${NPCS.map(n=>`<button class="npc-btn" onclick="accuseConfirm('${n.id}')">${n.emoji} <b>${n.name}</b><small>${n.job}</small></button>`).join('')}
+    </div>
+  `);
+}
+function accuseConfirm(id){
+  const n=byId(id);
+  render(`
+    <p class="big center">指认 <b class="seal-t">${n.name}</b> 是黄雀？</p>
+    <p class="center muted">指错了，就是第二次冤案。</p>
+    <div class="center">
+      <button onclick="accuse('${id}')">就是ta，落子无悔</button>
+      <button class="alt" onclick="accuseMenu()">再想想</button>
+    </div>
+  `);
+}
+function accuse(id){
+  if(id===S.mole){
+    const n=byId(id);
+    render(`
+      <p>你念出名字的一瞬间，${n.name}的脸色变了。</p>
+      <div class="dlg"><span class="who">${n.name}：</span>「证据呢？！你有什么证据——」</div>
+      <p>ta说到一半，忽然转身就跑。福伯大喝一声："<b class="seal-t">雀之战——撕了ta的名牌！</b>"</p>
+      <div class="center"><button class="big" onclick="tearStart()">🏷️ 撕名牌！</button></div>
+    `);
+  } else {
+    ending('C', id);
+  }
+}
+
+/* ---------- 撕名牌 QTE ---------- */
+let tPos=0, tDir=1, tSpeed=1.6, tZoneL=40, tZoneW=20, tLoop=null, tHP=3, pHP=2, tActive=false;
+function tearStart(){
+  tHP=3; pHP=S.charm?3:2; tSpeed=1.6;
+  tearRound();
+}
+function tearRound(){
+  tZoneW=Math.max(10, 22-(3-tHP)*5);
+  tZoneL=15+Math.random()*(80-tZoneW-15);
+  tPos=0; tDir=1; tActive=true;
+  render(`
+    <span class="tag">撕名牌 · 对方名牌 ${'🏷️'.repeat(tHP)} · 你的体力 ${'❤️'.repeat(pHP)}</span>
+    <p class="muted" style="font-size:14px">指针扫过<b class="seal-t">红区</b>的瞬间按下"撕"。脱手了，就要挨一下反扑。</p>
+    <div class="tearbar">
+      <div class="tearzone" style="left:${tZoneL}%; width:${tZoneW}%"></div>
+      <div class="tearmark" id="tmark" style="left:0%"></div>
+    </div>
+    <div class="center"><button class="big runbtn" onclick="tearHit()">撕！</button></div>
+  `);
+  cancelAnimationFrame(tLoop);
+  const step=()=>{
+    if(!tActive) return;
+    tPos+=tDir*tSpeed;
+    if(tPos>=98){tPos=98; tDir=-1} if(tPos<=0){tPos=0; tDir=1}
+    const m=document.getElementById('tmark'); if(m) m.style.left=tPos+'%';
+    tLoop=requestAnimationFrame(step);
+  };
+  tLoop=requestAnimationFrame(step);
+}
+function tearHit(){
+  if(!tActive) return;
+  tActive=false; cancelAnimationFrame(tLoop);
+  const inZone = tPos>=tZoneL && tPos<=tZoneL+tZoneW;
+  if(inZone){
+    tHP--; tSpeed+=0.5;
+    if(tHP<=0){ ending('A', S.mole); return; }
+    render(`<p class="big center seal-t">刺啦——撕下一角！</p><p class="center">对方还剩 ${'🏷️'.repeat(tHP)}</p><div class="center"><button onclick="tearRound()">再上！</button></div>`);
+  } else {
+    pHP--;
+    if(pHP<=0){ ending('B', S.mole); return; }
+    render(`<p class="big center">扑空了！</p><p class="center muted">对方反手一肘，你踉跄两步。剩余体力 ${'❤️'.repeat(pHP)}</p><div class="center"><button onclick="tearRound()">稳住，再上！</button></div>`);
+  }
+}
+
+/* ---------- 结局 ---------- */
+function ending(type, id){
+  tActive=false; cancelAnimationFrame(tLoop);
+  const mole=byId(S.mole);
+  const motive = MOTIVES[S.mole];
+  const confession = `
+    <div class="letter">
+      「二十年前的四月十七日夜里，德昌号没有进过贼。<b class="seal-t">贼是我。我偷走了我自己的配方。</b><br>
+      莱记的蜜有毒，我怕的不是丢方子，是方子落进他们手里，害了满城街坊。我藏起配方，报了假案——却没想到人言把守拙钉在了案板上。<br>
+      我用一个学徒的清白，换了一块招牌的干净。守拙，师父对不住你。<br>
+      白警官，你是唯一看穿我的人。你没升上去的那个官，记在我账上。<br>
+      掌灯的人换了。德昌号，明天照常开门。」
+      <p class="sig">——沈德昌 绝笔</p>
+    </div>`;
+  let html='';
+  if(type==='A'){
+    html=`
+      <span class="tag">结局 · 雀落</span>
+      <h1 class="brush" style="font-size:52px">雀<span>落</span></h1>
+      <p>名牌在你手里，${mole.name}瘫坐在地上，再没了辩解的力气。</p>
+      <div class="panel"><h3>黄雀 · ${mole.emoji} ${mole.name}</h3><p class="muted" style="font-size:15px">${motive}</p></div>
+      <p>福伯打开宝箱，取出一封信，当众念了出来：</p>
+      ${confession}
+      <p>顾守拙的名字，从此干干净净。父亲笔记上那句"存疑"，二十年后终于等到了下文。</p>
+      <p class="seal-t big center brush">结案。</p>`;
+  } else if(type==='B'){
+    html=`
+      <span class="tag">结局 · 雀飞</span>
+      <h1 class="brush" style="font-size:52px">雀<span>飞</span></h1>
+      <p>${mole.name}挣脱了你的手，背影消失在巷口。ta口袋里，是偷拍下的整张配方。</p>
+      <div class="panel"><h3>黄雀 · ${mole.emoji} ${mole.name}</h3><p class="muted" style="font-size:15px">${motive}</p></div>
+      <p>三天后，味莱集团发布"复刻百年老味"新品。德昌号的招牌被摆进他们总部的陈列柜，标签上写着：<b class="seal-t">已收购。</b></p>
+      <p>你猜对了人，却没能留住ta。老爷子算无遗策，只算漏了一件事——<b>人心的价钱。</b></p>
+      <p class="muted">至少，真相你已经带回来了：</p>
+      ${confession}`;
+  } else {
+    const wrong=byId(id);
+    html=`
+      <span class="tag">结局 · 错网</span>
+      <h1 class="brush" style="font-size:52px">错<span>网</span></h1>
+      <p>你指向了 ${wrong.emoji} <b>${wrong.name}</b>。</p>
+      <p>ta愣住，随即惨笑："二十年前，全城的人指着一个无辜的学徒说，就是他。二十年后……白先生，<b class="seal-t">你和他们有什么分别？</b>"</p>
+      <p>混乱中，真正的黄雀悄悄退到了人群外——</p>
+      <div class="panel"><h3>黄雀其实是 · ${mole.emoji} ${mole.name}</h3><p class="muted" style="font-size:15px">${motive}</p></div>
+      <p>父亲一辈子不肯错判一个人。今天你替他结了案，却也替这座城，又冤了一个人。</p>
+      <p class="muted">宝箱最终还是开了。信还是那封信：</p>
+      ${confession}`;
+  }
+  render(html+`
+    <hr class="divider">
+    <p class="center muted" style="font-size:14px">本局黄雀：${mole.name} · 每一局都会重新洗牌</p>
+    <div class="center">
+      <button class="big" onclick="prologue()">🔄 再来一局</button>
+      <button class="alt" onclick="title()">回到封面</button>
+    </div>
+  `);
+}
+
+/* 启动 */
+window.ch1=ch1; window.ch2=ch2; window.ch3=ch3; window.ch4=ch4; window.finale=finale;
+title();
+</script>

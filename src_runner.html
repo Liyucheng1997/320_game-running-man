@@ -1,0 +1,566 @@
+<title>黄雀在后·全城飞驰</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;900&display=swap">
+<style>
+  :root{
+    --paper:#EFE6D0; --ink:#2A241B; --soft:#6A5F48; --seal:#A63325;
+    --gold:#C99A3D; --line:#C9BB98; --card:#F6EFDE;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; touch-action:manipulation}
+  html,body{margin:0; height:100%; overflow:hidden; background:#20180F}
+  body{font-family:"Noto Serif SC",'Songti SC',SimSun,serif; color:var(--ink)}
+  #c3d{position:fixed; inset:0; display:block}
+  .brush{font-family:"Ma Shan Zheng","Noto Serif SC",serif; font-weight:400}
+
+  /* HUD */
+  #hud{position:fixed; top:0; left:0; right:0; display:none; justify-content:space-between; align-items:flex-start; padding:10px 14px; z-index:5; pointer-events:none}
+  .hud-box{background:rgba(32,24,15,.72); color:var(--paper); padding:6px 14px; font-size:14px; letter-spacing:.05em; border:1px solid rgba(239,230,208,.25)}
+  #seg-name{color:#E8C66B}
+  #distbar{width:150px; height:6px; background:rgba(239,230,208,.25); margin-top:5px}
+  #distbar i{display:block; height:100%; background:#E8C66B; width:0%}
+  #gapbox{display:none}
+  #gapbar{width:150px; height:8px; background:rgba(239,230,208,.25); margin-top:5px; position:relative}
+  #gapbar i{display:block; height:100%; background:var(--seal); width:50%}
+  #toast{position:fixed; top:16%; left:0; right:0; text-align:center; z-index:6; pointer-events:none; font-size:22px; color:#FFF3DC; text-shadow:0 2px 8px #000; opacity:0; transition:opacity .3s; letter-spacing:.1em}
+
+  /* 触屏按键 */
+  #pad{position:fixed; bottom:12px; left:0; right:0; display:none; justify-content:center; gap:10px; z-index:5}
+  #pad button{width:64px; height:64px; font-size:26px; border-radius:50%; border:1px solid rgba(239,230,208,.4); background:rgba(32,24,15,.55); color:var(--paper)}
+  #pad button:active{background:var(--seal)}
+
+  /* 剧情浮层 */
+  #ui{position:fixed; inset:0; z-index:10; display:none; overflow-y:auto; background:rgba(26,20,12,.62); backdrop-filter:blur(2px)}
+  .sheet{max-width:620px; margin:4vh auto; background:var(--paper); border:2px solid var(--ink); padding:22px 24px 26px; box-shadow:0 10px 40px rgba(0,0,0,.5)}
+  .sheet h1{font-size:52px; margin:.1em 0; letter-spacing:.05em; line-height:1.25}
+  .sheet h1 span{color:var(--seal)}
+  .kicker{letter-spacing:.3em; font-size:12px; color:var(--gold); margin:0}
+  .tag{display:inline-block; border:1px solid var(--seal); color:var(--seal); font-size:12px; padding:0 8px; letter-spacing:.15em; margin-bottom:8px}
+  .muted{color:var(--soft)} .seal-t{color:var(--seal)}
+  .sheet p{line-height:1.85; margin:.6em 0}
+  .letter{background:var(--card); border:1px solid var(--line); padding:14px 16px; font-size:15px; margin:10px 0}
+  .clue-pop{border:1px solid var(--seal); background:var(--card); padding:10px 14px; margin:10px 0; font-size:15px}
+  .clue-pop::before{content:"🔎 线索入册"; display:block; color:var(--seal); font-size:12px; letter-spacing:.2em; margin-bottom:2px}
+  .sheet button{font-family:inherit; font-size:17px; cursor:pointer; background:var(--ink); color:var(--paper); border:none; padding:11px 26px; margin:8px 8px 0 0; letter-spacing:.12em}
+  .sheet button:hover{background:var(--seal)}
+  .sheet button.alt{background:var(--card); color:var(--ink); border:1px solid var(--ink)}
+  .sheet button:disabled{opacity:.4}
+  .opt{display:block; width:100%; text-align:left; background:var(--card); color:var(--ink); border:1px solid var(--line); margin:8px 0; padding:11px 14px; font-size:15px}
+  .opt:hover{border-color:var(--seal); background:#EDE2C6; color:var(--ink)}
+  .center{text-align:center}
+  .keys{font-size:13px; color:var(--soft); border-top:1px dashed var(--line); margin-top:14px; padding-top:10px}
+  kbd{background:var(--ink); color:var(--paper); padding:1px 7px; font-family:inherit; font-size:12px; margin:0 2px}
+</style>
+
+<canvas id="c3d"></canvas>
+<div id="hud">
+  <div class="hud-box"><span id="seg-name">赛段</span><div id="distbar"><i id="dist-i"></i></div>
+    <div id="gapbox">与黄雀的距离 <b id="gap-m">25</b>m<div id="gapbar"><i id="gap-i"></i></div></div>
+  </div>
+  <div class="hud-box">🪙 <b id="hud-coin">0</b>　<span id="hud-hearts">❤️❤️❤️</span></div>
+</div>
+<div id="toast"></div>
+<div id="pad">
+  <button id="pl" aria-label="左移">◀</button>
+  <button id="pj" aria-label="跳">⤒</button>
+  <button id="ps" aria-label="滑铲">⤓</button>
+  <button id="pr" aria-label="右移">▶</button>
+</div>
+<div id="ui"></div>
+
+<script>/*__THREE__*/</script>
+<script>
+"use strict";
+/* ================= 剧情数据 ================= */
+const NPCS=[
+  {id:'shen', name:'沈见秋', emoji:'🧑‍🎨', job:'德昌号继承人', tag:'沈'},
+  {id:'gu',   name:'顾曼芝', emoji:'📷', job:'美食博主', tag:'顾'},
+  {id:'tang', name:'汤圆圆', emoji:'🥮', job:'甜品店老板娘', tag:'汤'},
+  {id:'zheng',name:'郑野',   emoji:'📦', job:'快递站长', tag:'郑'},
+  {id:'lin',  name:'林晚',   emoji:'💼', job:'味莱投资顾问', tag:'林'},
+];
+const byId=id=>NPCS.find(n=>n.id===id);
+const TRUE_OBS=[
+  '起跑前你回头看了一眼：{M}落在队伍最后，对着你们手里的线索纸举起了手机——那不是自拍的角度。',
+  '补给点休息时，{M}的手机亮了一下：一条六位数的到账通知，付款方名称被拇指飞快盖住。',
+  '巷口转弯处，{M}压低声音打电话："东西……快到手了。"看见你追上来，立刻改口聊天气。',
+];
+const HERRINGS={
+  shen:'沈见秋趁人不备，把一张对折的旧纸塞回内袋，神色慌张——那不是线索卡。',
+  gu:'顾曼芝在德昌号老门槛前蹲了很久，手指在木头上摩挲，像在找一个只有她知道的记号。',
+  tang:'汤圆圆的帆布包里露出一角泛黄的纸，她一发现你在看，立刻把包抱到了胸前。',
+  zheng:'郑野接了个电话就走远了，回来时上衣口袋里多了一只鼓鼓囊囊的信封。',
+  lin:'林晚的笔记本里，夹着一份盖了红章的文件。她记笔记的时候，眼睛在每个人身上转。',
+};
+const EXPLAIN={
+  shen:'（赛后他坦白：那是收养公证书——他是养子，怕失去继承权。嫌疑洗清。）',
+  gu:'（赛后她坦白：她是当年蒙冤学徒顾守拙之女，回来翻案。嫌疑洗清。）',
+  tang:'（赛后她坦白：那是奶奶托付的半张旧配方，守了二十年的约。嫌疑洗清。）',
+  zheng:'（赛后他掏出代收单：信封是替客户代收的货款。嫌疑洗清。）',
+  lin:'（赛后她摊牌：那是能钉死味莱当年罪行的旧台账，她在犹豫要不要交出来。嫌疑洗清。）',
+};
+const MOTIVES={
+  shen:'压垮他的是那张收养公证书——"沈氏后人"四个字判了他出局。既然注定一无所有，不如先卖个好价钱。',
+  gu:'她恨错了方向：翻案无门，就让沈家也尝尝身败名裂的滋味。味莱只是递刀的人，握刀的是二十年的怨。',
+  tang:'七位数的报价，第一通电话她挂了，第二通她没挂。扩张欠下的债，比奶奶临终的嘱托声音更响。',
+  zheng:'十八万的债、平台抽成、老家的娃。五十万，买走了老街最热心的野哥。',
+  lin:'明面谈收购只是幌子，她自己就是上司口中的"其他人"。第十二盏老字号的灯，她要亲手关掉。',
+};
+const SEGS=[
+  {name:'第一赛段 · 茶馆道', dist:420, base:16,
+   intro:`<span class="tag">第一赛段 · 老街 → 茶馆</span>
+     <p>管家福伯一声哨响："老爷子的规矩——<b class="seal-t">线索不在嘴里，在腿上。</b>第一个跑到茶馆的人，先看当年的报纸！"</p>
+     <p>六个人同时冲了出去。巷子里晾衣杆横七竖八，菜筐条凳满地都是——</p>`,
+   clueT:'线索一 · 2006年报纸',
+   clue:`<div class="letter">「<b>百年德昌号祖传配方失窃 学徒顾某涉重大嫌疑</b>」<br><span class="muted" style="font-size:14px">办案民警<b>白国安</b>（你的父亲）表示："证据不足，不对任何人定性。"报纸角落有则小广告：<b class="seal-t">"莱记商行——蜜饯糖料，价廉物美。"</b></span></div>
+     <p>父亲的名字印在二十年前的头版上。这一案，你替他跑完。</p>`},
+  {name:'第二赛段 · 邮局街', dist:520, base:18,
+   intro:`<span class="tag">第二赛段 · 茶馆 → 老邮局</span>
+     <p>福伯举起一封信："老爷子的亲笔信压在老邮局的柜台下。他说——<b class="seal-t">聪明人，竖着读。</b>跑吧！"</p>`,
+   clueT:'线索二 · 藏头诗',
+   clue:`<div class="letter"><b>黄</b>铜锁扣自内落，<br><b>雀</b>衔桂枝印火漆。<br><b>在</b>案卷上蒙尘者，<br><b>身</b>负污名二十载。<br><b>边</b>角账页留半纸，静待后来人拾。</div>
+     <p>竖读首字：<b class="seal-t">黄 雀 在 身 边</b>。内鬼确凿存在。还有一句扎眼——"锁扣<b>自内</b>落"：当年根本没有外贼。</p>`},
+  {name:'第三赛段 · 公园环道', dist:620, base:20,
+   intro:`<span class="tag">第三赛段 · 邮局 → 公园</span>
+     <p>福伯把账本残页扬了扬："想看老爷子的账，先跑赢公园这一圈。<b class="seal-t">做点心和做人一样，讲究站得住！</b>"</p>`,
+   clueT:'线索三 · 账本残页',
+   clue:`<div class="letter">丙戌年四月<br>4月10日　莱记 桂花蜜 廿坛 入库<br><b>4月14日　莱记 桂花蜜 廿坛——退</b><br>4月15日　送 检〔后字被墨涂去〕<br><span class="muted">朱批："蜜不对。守拙验出来的。<b class="seal-t">蝉不知螳螂——螳螂也未必知道树后头的东西。</b>"</span></div>
+     <p>案发前三天，德昌号把莱记的蜜整批退了货，还送了检。"莱记"，又是它。</p>`},
+  {name:'第四赛段 · 书店坡', dist:720, base:22,
+   intro:`<span class="tag">第四赛段 · 公园 → 旧书店</span>
+     <p>铁匣就锁在书店。密码是<b class="seal-t">0417</b>——报纸上的案发日，请柬上的日子。福伯说："腿到了，钥匙就到了。"</p>`,
+   clueT:'线索四 · 检验单与半张配方',
+   clue:`<div class="letter"><b>检验报告单</b>　送检日期：2006年4月16日　送检人：<b>沈德昌</b><br>样品：桂花蜜（莱记商行）<br>结论：<b class="seal-t">致敏物超标十二倍</b>，不得用于食品。</div>
+     <p>送检4月16，"失窃"4月17。<b class="seal-t">先知道蜜有毒，后"丢"了配方。</b>真相只有一个：失窃案是老掌柜自导自演——为护配方绝了贼心，却让学徒背了二十年黑锅。</p>
+     <p>案子结了。<b>但黄雀还没抓到。</b>匣子里的半张配方，此刻正被某双眼睛盯着。</p>`},
+];
+
+/* ================= 游戏状态 ================= */
+const G={ mode:'boot', seg:0, coins:0, mole:null, obsLog:[], trueSeen:0, chaseBonus:0, log:[] };
+function newRun(){ G.seg=0; G.coins=0; G.mole=NPCS[(Math.random()*NPCS.length)|0].id; G.obsLog=[]; G.trueSeen=0; G.chaseBonus=0; G.log=[]; setCoins(0); }
+const $=id=>document.getElementById(id);
+function setCoins(n){ G.coins=n; $('hud-coin').textContent=n; }
+function toast(t, ms=1400){ const el=$('toast'); el.innerHTML=t; el.style.opacity=1; clearTimeout(el._t); el._t=setTimeout(()=>el.style.opacity=0, ms); }
+function moleName(){ return byId(G.mole).name; }
+
+/* ================= three.js 场景 ================= */
+const canvas=$('c3d');
+const renderer=new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();
+const DUSK=0xE8C79A;
+scene.background=new THREE.Color(DUSK);
+scene.fog=new THREE.Fog(DUSK, 30, 120);
+const camera=new THREE.PerspectiveCamera(68, 1, .1, 300);
+camera.position.set(0,3.1,6.4);
+camera.lookAt(0,1.1,-10);
+function onResize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+addEventListener('resize', onResize); onResize();
+
+scene.add(new THREE.HemisphereLight(0xFFEFD0, 0x6b5a3e, .95));
+const sun=new THREE.DirectionalLight(0xFFE0B0, .8); sun.position.set(-6,12,4); scene.add(sun);
+
+/* 路面与地面 */
+const LANES=[-2.2,0,2.2];
+const road=new THREE.Mesh(new THREE.PlaneGeometry(8.6,400), new THREE.MeshLambertMaterial({color:0x8a8070}));
+road.rotation.x=-Math.PI/2; road.position.set(0,0,-160); scene.add(road);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(300,400), new THREE.MeshLambertMaterial({color:0xA79B7E}));
+ground.rotation.x=-Math.PI/2; ground.position.set(0,-.05,-160); scene.add(ground);
+const dashGeo=new THREE.PlaneGeometry(.16,2.2);
+const dashMat=new THREE.MeshBasicMaterial({color:0xEFE6D0});
+const dashes=[];
+for(let i=0;i<40;i++){ for(const x of [-1.1,1.1]){ const d=new THREE.Mesh(dashGeo,dashMat); d.rotation.x=-Math.PI/2; d.position.set(x,.01,-i*8); scene.add(d); dashes.push(d);} }
+
+/* 人物工厂 */
+function makeTagTex(ch){
+  const cv=document.createElement('canvas'); cv.width=cv.height=128;
+  const g=cv.getContext('2d');
+  g.fillStyle='#F6EFDE'; g.fillRect(0,0,128,128);
+  g.strokeStyle='#2A241B'; g.lineWidth=8; g.strokeRect(4,4,120,120);
+  g.fillStyle='#A63325'; g.font='84px "Ma Shan Zheng", serif';
+  g.textAlign='center'; g.textBaseline='middle'; g.fillText(ch,64,72);
+  return new THREE.CanvasTexture(cv);
+}
+function makeRunner(jacket, skin, tagChar){
+  const gp=new THREE.Group();
+  const mj=new THREE.MeshLambertMaterial({color:jacket});
+  const ms=new THREE.MeshLambertMaterial({color:skin});
+  const md=new THREE.MeshLambertMaterial({color:0x33302a});
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.62,.72,.36), mj); body.position.y=1.08; gp.add(body);
+  const head=new THREE.Mesh(new THREE.BoxGeometry(.4,.4,.38), ms); head.position.y=1.72; gp.add(head);
+  const hair=new THREE.Mesh(new THREE.BoxGeometry(.42,.14,.4), md); hair.position.y=1.94; gp.add(hair);
+  const mkLimb=(w,h)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,w), md); m.geometry.translate(0,-h/2,0); return m; };
+  const aL=mkLimb(.15,.6), aR=mkLimb(.15,.6), lL=mkLimb(.2,.72), lR=mkLimb(.2,.72);
+  aL.material=aR.material=mj;
+  aL.position.set(-.45,1.4,0); aR.position.set(.45,1.4,0);
+  lL.position.set(-.18,.72,0); lR.position.set(.18,.72,0);
+  gp.add(aL,aR,lL,lR);
+  const tag=new THREE.Mesh(new THREE.PlaneGeometry(.5,.5), new THREE.MeshBasicMaterial({map:makeTagTex(tagChar)}));
+  tag.position.set(0,1.12,.22); gp.add(tag);
+  gp.userData={aL,aR,lL,lR,body,head,hair};
+  return gp;
+}
+const player=makeRunner(0xA63325, 0xE8C09A, '白'); scene.add(player);
+let moleRunner=null;
+
+/* 障碍/金币 池 */
+const OB_MATS={ bench:new THREE.MeshLambertMaterial({color:0x7a5c33}), basket:new THREE.MeshLambertMaterial({color:0xB98A38}),
+  cart:new THREE.MeshLambertMaterial({color:0x5b6e5a}), pole:new THREE.MeshLambertMaterial({color:0x4a4136}),
+  banner:new THREE.MeshLambertMaterial({color:0xA63325}) };
+function makeObstacle(type){
+  const gp=new THREE.Group(); gp.userData.type=type;
+  if(type==='bench'){ // 跳过
+    const top=new THREE.Mesh(new THREE.BoxGeometry(1.7,.14,.5), OB_MATS.bench); top.position.y=.5; gp.add(top);
+    for(const dx of [-.7,.7]){ const leg=new THREE.Mesh(new THREE.BoxGeometry(.14,.5,.4), OB_MATS.bench); leg.position.set(dx,.25,0); gp.add(leg); }
+  } else if(type==='basket'){ // 跳过
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.42,.32,.6,8), OB_MATS.basket); b.position.y=.3; gp.add(b);
+  } else if(type==='banner'){ // 滑铲
+    for(const dx of [-1.0,1.0]){ const p=new THREE.Mesh(new THREE.BoxGeometry(.1,2.2,.1), OB_MATS.pole); p.position.set(dx,1.1,0); gp.add(p); }
+    const bn=new THREE.Mesh(new THREE.BoxGeometry(2.1,.55,.06), OB_MATS.banner); bn.position.y=1.45; gp.add(bn);
+  } else { // cart 三轮车：换道
+    const bx=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.1,1.9), OB_MATS.cart); bx.position.y=.75; gp.add(bx);
+    const rf=new THREE.Mesh(new THREE.BoxGeometry(1.6,.1,2.0), OB_MATS.pole); rf.position.y=1.4; gp.add(rf);
+    for(const dz of [-.6,.6]) for(const dx of [-.6,.6]){ const w=new THREE.Mesh(new THREE.CylinderGeometry(.28,.28,.12,10), OB_MATS.pole); w.rotation.z=Math.PI/2; w.position.set(dx,.28,dz); gp.add(w); }
+  }
+  return gp;
+}
+const coinGeo=new THREE.CylinderGeometry(.26,.26,.07,14);
+const coinMat=new THREE.MeshLambertMaterial({color:0xE8C66B, emissive:0x8a6b1e});
+const boostGeo=new THREE.BoxGeometry(.42,.42,.42);
+const boostMat=new THREE.MeshLambertMaterial({color:0xFFF3DC, emissive:0x99551e});
+/* 街景 */
+const bldGeos=[new THREE.BoxGeometry(5,6,7), new THREE.BoxGeometry(6,9,7), new THREE.BoxGeometry(5,12,7)];
+const bldMats=[0xC9B392,0xB39B78,0x9E8A6B,0xBCA57F].map(c=>new THREE.MeshLambertMaterial({color:c}));
+const roofMat=new THREE.MeshLambertMaterial({color:0x4E4A42});
+const lantMat=new THREE.MeshLambertMaterial({color:0xC0392B, emissive:0x7a1f12});
+function makeBuilding(){
+  const g=new THREE.Group();
+  const geo=bldGeos[(Math.random()*bldGeos.length)|0];
+  const b=new THREE.Mesh(geo, bldMats[(Math.random()*bldMats.length)|0]);
+  const h=geo.parameters.height; b.position.y=h/2; g.add(b);
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(4.6,1.6,4), roofMat);
+  roof.rotation.y=Math.PI/4; roof.position.y=h+.8; g.add(roof);
+  return g;
+}
+function makeLantern(){
+  const g=new THREE.Group();
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,3.4,6), OB_MATS.pole); pole.position.y=1.7; g.add(pole);
+  const ball=new THREE.Mesh(new THREE.SphereGeometry(.34,10,8), lantMat); ball.position.y=3.1; g.add(ball);
+  return g;
+}
+
+/* 动态实体表 */
+let ents=[]; // {obj, kind:'ob'|'coin'|'boost'|'scenery', lane, type}
+function clearEnts(){ for(const e of ents) scene.remove(e.obj); ents=[]; }
+function addEnt(obj, kind, lane, type){ scene.add(obj); ents.push({obj,kind,lane,type}); }
+
+/* 生成器 */
+let spawnZ=-40;
+function spawnChunk(diff){
+  // 街景
+  for(const side of [-1,1]){
+    const b=makeBuilding(); b.position.set(side*(10.5+Math.random()*3), 0, spawnZ-Math.random()*6); addEnt(b,'scenery');
+    if(Math.random()<.7){ const l=makeLantern(); l.position.set(side*5.2,0,spawnZ+4); addEnt(l,'scenery'); }
+  }
+  // 障碍：难度决定数量
+  const n=Math.random()< .5?1: (Math.random()<diff?2:1);
+  const usedLanes=[];
+  for(let i=0;i<n;i++){
+    let lane=(Math.random()*3)|0;
+    if(usedLanes.includes(lane)) lane=(lane+1)%3;
+    usedLanes.push(lane);
+    const r=Math.random();
+    const type= r<.3?'bench': r<.55?'basket': r<.78?'cart':'banner';
+    const ob=makeObstacle(type);
+    ob.position.set(LANES[lane],0,spawnZ - i*6 - Math.random()*3);
+    addEnt(ob,'ob',lane,type);
+  }
+  // 金币弧
+  if(Math.random()<.85){
+    const lane=(Math.random()*3)|0;
+    const cz=spawnZ-10-Math.random()*4;
+    for(let i=0;i<5;i++){
+      const c=new THREE.Mesh(coinGeo,coinMat); c.rotation.x=Math.PI/2;
+      c.position.set(LANES[lane], .8, cz-i*1.4);
+      addEnt(c,'coin',lane);
+    }
+  }
+  // 追逐战的桂花糕加速
+  if(G.mode==='chase' && Math.random()<.6){
+    const lane=(Math.random()*3)|0;
+    const b=new THREE.Mesh(boostGeo,boostMat);
+    b.position.set(LANES[lane], .9, spawnZ-16-Math.random()*6);
+    addEnt(b,'boost',lane);
+  }
+  spawnZ-=20;
+}
+
+/* ================= 跑步控制 ================= */
+const P={lane:1, x:0, y:0, vy:0, sliding:0, inv:0, stumble:0};
+let speed=16, dist=0, hearts=3, running=false;
+function resetPlayer(){ P.lane=1; P.x=0; P.y=0; P.vy=0; P.sliding=0; P.inv=0; P.stumble=0; }
+function tryLane(d){ if(!running) return; P.lane=Math.max(0,Math.min(2,P.lane+d)); }
+function tryJump(){ if(!running) return; if(P.y<=0.01 && P.sliding<=0){ P.vy=8.6; } }
+function trySlide(){ if(!running) return; if(P.y<=0.01){ P.sliding=.62; } }
+addEventListener('keydown',e=>{
+  if(e.repeat) return;
+  if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') tryLane(-1);
+  else if(e.key==='ArrowRight'||e.key==='d'||e.key==='D') tryLane(1);
+  else if(e.key==='ArrowUp'||e.key==='w'||e.key==='W'||e.key===' ') { tryJump(); e.preventDefault(); }
+  else if(e.key==='ArrowDown'||e.key==='s'||e.key==='S') trySlide();
+});
+let tx=0,ty=0;
+addEventListener('touchstart',e=>{ const t=e.touches[0]; tx=t.clientX; ty=t.clientY; },{passive:true});
+addEventListener('touchend',e=>{
+  const t=e.changedTouches[0]; const dx=t.clientX-tx, dy=t.clientY-ty;
+  if(Math.abs(dx)<24 && Math.abs(dy)<24) return;
+  if(Math.abs(dx)>Math.abs(dy)) tryLane(dx>0?1:-1);
+  else dy<0? tryJump(): trySlide();
+},{passive:true});
+$('pl').onclick=()=>tryLane(-1); $('pr').onclick=()=>tryLane(1);
+$('pj').onclick=()=>tryJump(); $('ps').onclick=()=>trySlide();
+const isTouch=matchMedia('(pointer:coarse)').matches;
+
+function stumble(){
+  if(P.inv>0) return;
+  P.inv=1.6; P.stumble=.8;
+  if(G.mode==='run'){
+    hearts--; drawHearts();
+    toast(hearts>0?'💥 摔了一跤！':'💥 体力耗尽……', 1200);
+    if(hearts<=0){ failSegment(); }
+  } else if(G.mode==='chase'){
+    chaseGap+=7; toast('💥 摔了一跤！黄雀拉开了距离', 1200);
+  }
+}
+function drawHearts(){ $('hud-hearts').textContent='❤️'.repeat(Math.max(0,hearts))+'🖤'.repeat(Math.max(0,3-hearts)); }
+
+/* ================= 主循环 ================= */
+let last=performance.now(), animT=0, shake=0;
+let chaseGap=25, chaseBoost=0, chaseTime=0, moleSpeed=19.5;
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt=Math.min(.05,(now-last)/1000); last=now;
+  if(!running){ renderer.render(scene,camera); return; }
+  animT+=dt;
+  /* 速度 */
+  let sp=speed;
+  if(G.mode==='run'){ sp=speed*(1+0.35*Math.min(1,dist/SEGS[G.seg].dist)); }
+  if(G.mode==='chase'){ chaseBoost=Math.max(0,chaseBoost-dt); sp=speed+(chaseBoost>0?4.5:0); }
+  if(P.stumble>0){ P.stumble-=dt; sp*=.45; }
+  dist+=sp*dt;
+  /* 世界前移 */
+  for(const e of ents){ e.obj.position.z+=sp*dt; if(e.kind==='coin') e.obj.rotation.z+=4*dt; if(e.kind==='boost') e.obj.rotation.y+=3*dt; }
+  for(const d of dashes){ d.position.z+=sp*dt; if(d.position.z>8) d.position.z-=320; }
+  spawnZ+=sp*dt;
+  while(spawnZ>-120){ spawnChunk(G.mode==='chase'?.75:.35+G.seg*.12); }
+  ents=ents.filter(e=>{ if(e.obj.position.z>14){ scene.remove(e.obj); return false; } return true; });
+  /* 玩家运动 */
+  P.x+= (LANES[P.lane]-P.x)*Math.min(1,dt*12);
+  if(P.y>0||P.vy>0){ P.vy-=22*dt; P.y=Math.max(0,P.y+P.vy*dt); if(P.y===0) P.vy=0; }
+  if(P.sliding>0) P.sliding-=dt;
+  P.inv=Math.max(0,P.inv-dt);
+  player.position.set(P.x, P.y, 0);
+  const u=player.userData, sw=Math.sin(animT*14)* (P.y>0?.3:1);
+  u.aL.rotation.x=sw*.9; u.aR.rotation.x=-sw*.9; u.lL.rotation.x=-sw; u.lR.rotation.x=sw;
+  player.scale.y = P.sliding>0? .5:1;
+  player.rotation.z=(LANES[P.lane]-P.x)*-.08;
+  player.visible = !(P.inv>0 && Math.floor(animT*12)%2===0);
+  /* 追逐目标 */
+  if(G.mode==='chase' && moleRunner){
+    chaseTime+=dt;
+    chaseGap += (moleSpeed-sp)*dt;
+    moleRunner.position.set(LANES[1]*0+Math.sin(animT*.7)*1.6, 0, -(4+Math.min(50,chaseGap)*.6));
+    const mu=moleRunner.userData, msw=Math.sin(animT*14+1.5);
+    mu.aL.rotation.x=msw*.9; mu.aR.rotation.x=-msw*.9; mu.lL.rotation.x=-msw; mu.lR.rotation.x=msw;
+    $('gap-m').textContent=Math.max(0,chaseGap).toFixed(0);
+    $('gap-i').style.width=Math.max(0,Math.min(100,100-chaseGap*2))+'%';
+    if(chaseGap<=0){ running=false; tearWin(); }
+    else if(chaseGap>=48 || chaseTime>90){ running=false; chaseFail(); }
+  }
+  /* 碰撞 */
+  for(const e of ents){
+    if(e.kind==='scenery') continue;
+    const z=e.obj.position.z;
+    if(z<-1.2||z>1.2) continue;
+    if(e.lane!==P.lane) continue;
+    if(e.kind==='coin'){ scene.remove(e.obj); e.kind='dead'; setCoins(G.coins+1); toast('🪙 +1',500); continue; }
+    if(e.kind==='boost'){ scene.remove(e.obj); e.kind='dead'; chaseBoost=2.4; toast('🥮 加速！',800); continue; }
+    if(e.kind==='ob'){
+      const t=e.type;
+      const cleared = (t==='bench'||t==='basket') ? P.y>0.55 : (t==='banner') ? P.sliding>0 : false;
+      if(!cleared){ stumble(); e.kind='dead'; }
+    }
+  }
+  ents=ents.filter(e=>e.kind!=='dead');
+  /* HUD 进度 */
+  if(G.mode==='run'){
+    const seg=SEGS[G.seg];
+    $('dist-i').style.width=Math.min(100,dist/seg.dist*100)+'%';
+    if(dist>=seg.dist){ running=false; segmentClear(); }
+  }
+  /* 相机 */
+  shake=Math.max(0,shake-dt*3);
+  if(P.stumble>.5) shake=.25;
+  camera.position.x=P.x*.35+(Math.random()-.5)*shake;
+  camera.position.y=3.1+P.y*.25+(Math.random()-.5)*shake;
+  renderer.render(scene,camera);
+}
+requestAnimationFrame(loop);
+
+/* ================= 关卡流程 ================= */
+function startWorld(){
+  clearEnts(); spawnZ=-30; resetPlayer(); dist=0;
+  for(let i=0;i<6;i++) spawnChunk(.2);
+}
+function startSegment(i){
+  G.mode='run'; G.seg=i;
+  const seg=SEGS[i];
+  speed=seg.base; hearts=3; drawHearts();
+  startWorld();
+  $('hud').style.display='flex'; $('gapbox').style.display='none'; $('distbar').style.display='block';
+  $('seg-name').textContent=seg.name;
+  $('pad').style.display=isTouch?'flex':'none';
+  hideUI(); running=true;
+  toast('🏃 跑！','1000');
+}
+function failSegment(){
+  running=false;
+  ui(`<span class="tag">${SEGS[G.seg].name}</span>
+    <p class="center" style="font-size:40px" >🤕</p>
+    <p class="center">你摔得七荤八素。福伯把你扶起来："老爷子说了，<b class="seal-t">跌倒不算输，不起来才算。</b>"</p>
+    <p class="center"><button onclick="startSegment(${G.seg})">拍拍土，重跑这段</button></p>`);
+}
+function segmentClear(){
+  const seg=SEGS[G.seg];
+  const bonus=3+G.seg; setCoins(G.coins+bonus);
+  let extra='';
+  // 赛段2/3/4后出观察
+  if(G.seg===1){ const t=TRUE_OBS[G.trueSeen++].replaceAll('{M}',moleName()); G.obsLog.push(t); extra=`<div class="clue-pop">${t}</div>`; }
+  if(G.seg===2){ const inn=NPCS.filter(n=>n.id!==G.mole); const pick=inn[(Math.random()*inn.length)|0]; const t=HERRINGS[pick.id]+'<br><span class="muted" style="font-size:13px">'+EXPLAIN[pick.id]+'</span>'; G.obsLog.push(t); extra=`<div class="clue-pop">${t}</div>`; }
+  if(G.seg===3){ const t=TRUE_OBS[G.trueSeen++].replaceAll('{M}',moleName()); G.obsLog.push(t); extra=`<div class="clue-pop">${t}</div>`; }
+  ui(`<span class="tag">${seg.name} · 完成 <span class="muted">冲线奖励 +${bonus}🪙</span></span>
+    ${seg.clue}
+    ${extra}
+    <p class="center"><button onclick="${G.seg<3?`nextIntro(${G.seg+1})`:'preFinale()'}">${G.seg<3?'继续 → 下一赛段':'继续 → 终局广场'}</button></p>`);
+}
+function nextIntro(i){
+  const seg=SEGS[i];
+  ui(seg.intro+`
+    <p class="center"><button onclick="startSegment(${i})">🏃 开跑（${seg.dist}米）</button></p>
+    ${keysHelp()}`);
+}
+function keysHelp(){
+  return `<div class="keys">操作：<kbd>←</kbd><kbd>→</kbd>变道　<kbd>↑</kbd>/<kbd>空格</kbd>跳过条凳竹筐　<kbd>↓</kbd>滑铲过横幅　三轮车要换道躲！手机：滑动屏幕。</div>`;
+}
+
+/* ================= 终局 ================= */
+function preFinale(){
+  ui(`<span class="tag">终局 · 广场</span>
+    <p>宝箱找到了。福伯按住箱盖："老爷子的规矩——<b class="seal-t">开箱之前，先清门户。</b>黄雀不除，箱子不开。"</p>
+    <p>指认之前，管家商店最后开张。你有 <b style="color:var(--gold)">${G.coins}🪙</b>。</p>
+    <button class="opt" onclick="buyIntel()">🕵️ 情报卡（3🪙）—— 福伯的耳朵比你想的灵</button>
+    <button class="opt" onclick="buyShoe()" ${G.chaseBonus?'disabled':''}>👟 飞毛腿护符（5🪙）—— 追逐战起步快 8 米 ${G.chaseBonus?'（已购）':''}</button>
+    <p class="center"><button onclick="accuseMenu()">我准备好指认了 →</button></p>`);
+}
+function buyIntel(){
+  if(G.coins<3){ toast('铜钱不够'); return; }
+  setCoins(G.coins-3);
+  let t;
+  if(G.trueSeen<TRUE_OBS.length){ t=TRUE_OBS[G.trueSeen++].replaceAll('{M}',moleName()); }
+  else t='福伯压低声音："老爷子只交代了一句——<b>留心那个最不缺钱、又最喊穷的人。</b>"';
+  G.obsLog.push(t);
+  ui(`<span class="tag">情报卡</span><div class="clue-pop">${t}</div>
+    <p class="center"><button onclick="preFinale()">← 回到商店</button></p>`);
+}
+function buyShoe(){ if(G.coins<5){ toast('铜钱不够'); return; } setCoins(G.coins-5); G.chaseBonus=8; preFinale(); }
+function accuseMenu(){
+  ui(`<span class="tag">指认 · 只有一次机会</span>
+    <p>五个人站成一排。福伯说："白警官当年不肯错判一个人。<b class="seal-t">白先生，轮到你了。</b>"</p>
+    <p class="muted" style="font-size:14px">回想一路上你看到的：</p>
+    ${G.obsLog.map(t=>`<div class="clue-pop">${t}</div>`).join('')||'<p class="muted">（这一路你只顾跑，什么都没注意到……）</p>'}
+    ${NPCS.map(n=>`<button class="opt" onclick="accuse('${n.id}')">${n.emoji} <b>${n.name}</b> · <span class="muted">${n.job}</span></button>`).join('')}`);
+}
+window.accuse=function(id){
+  const n=byId(id);
+  ui(`<p class="center" style="font-size:22px">指认 <b class="seal-t">${n.name}</b> 是黄雀？</p>
+    <p class="center muted">指错了，就是第二次冤案。</p>
+    <div class="center"><button onclick="startChase('${id}')">就是ta，追！</button>
+    <button class="alt" onclick="accuseMenu()">再想想</button></div>`);
+};
+let chaseTarget=null;
+function startChase(id){
+  chaseTarget=id;
+  const n=byId(id);
+  G.mode='chase';
+  if(moleRunner){ scene.remove(moleRunner); }
+  moleRunner=makeRunner(0x2F4858, 0xE8C09A, n.tag); scene.add(moleRunner);
+  speed=19; chaseGap=25-(G.chaseBonus||0); chaseBoost=0; chaseTime=0; moleSpeed=19.5;
+  startWorld();
+  $('hud').style.display='flex'; $('distbar').style.display='none'; $('gapbox').style.display='block';
+  $('seg-name').textContent='雀之战 · 追上'+n.name+'！';
+  hideUI(); running=true;
+  toast('🏷️ 撕名牌！追上ta！',1500);
+}
+function tearWin(){
+  const t=chaseTarget, n=byId(t);
+  if(t===G.mole){
+    endScreen('A', `<p>你一把抓住${n.name}后背的名牌——<b class="seal-t">刺啦！</b></p>
+      <p>名牌在你手里。${n.name}瘫坐在青石板上，再没了辩解的力气。</p>`);
+  } else {
+    endScreen('C', `<p>你撕下了${n.name}的名牌。ta愣住，随即惨笑：</p>
+      <p>"二十年前，全城的人指着一个无辜的学徒说，就是他。二十年后……白先生，<b class="seal-t">你和他们有什么分别？</b>"</p>
+      <p>混乱中，真正的黄雀——<b class="seal-t">${moleName()}</b>——悄悄退出了广场。</p>`);
+  }
+}
+function chaseFail(){
+  const t=chaseTarget;
+  if(t===G.mole){
+    endScreen('B', `<p>${moleName()}的背影消失在巷口。ta口袋里，是偷拍下的整张配方。</p>
+      <p>你猜对了人，却没能追上ta。老爷子算无遗策，只算漏了一件事——<b class="seal-t">人心的价钱。</b></p>`);
+  } else {
+    endScreen('C', `<p>你追丢了${byId(t).name}——也好，因为ta本就不是黄雀。</p>
+      <p>而真正的黄雀——<b class="seal-t">${moleName()}</b>——早已带着偷拍的配方离开了广场。</p>`);
+  }
+}
+function endScreen(type, head){
+  G.mode='end'; running=false;
+  $('hud').style.display='none'; $('pad').style.display='none';
+  const mole=byId(G.mole);
+  const confession=`<div class="letter">「二十年前的四月十七日夜里，德昌号没有进过贼。<b class="seal-t">贼是我。我偷走了我自己的配方。</b><br>
+    莱记的蜜有毒。我怕的不是丢方子，是方子落进他们手里，害了满城街坊。我藏起配方，报了假案——却没想到人言把守拙钉在了案板上。<br>
+    守拙，师父对不住你。白警官，你是唯一看穿我的人。<br>
+    掌灯的人换了。德昌号，明天照常开门。」<div style="text-align:right" class="muted">——沈德昌 绝笔</div></div>`;
+  const titles={A:['雀','落','结局 · 雀落'], B:['雀','飞','结局 · 雀飞'], C:['错','网','结局 · 错网']};
+  const t=titles[type];
+  let tail='';
+  if(type==='A') tail=`<p>福伯打开宝箱，当众念出了那封信：</p>${confession}<p>顾守拙的名字从此干干净净，父亲那句"证据不足"终于等到了下文。<b class="seal-t brush" style="font-size:24px">结案。</b></p>`;
+  if(type==='B') tail=`<p>三天后，味莱发布"复刻百年老味"新品。德昌号的招牌被摆进他们的陈列柜，标签写着：<b class="seal-t">已收购。</b></p><p class="muted">至少，真相你已经带回来了：</p>${confession}`;
+  if(type==='C') tail=`<p>父亲一辈子不肯错判一个人。今天你替他结了案，却也替这座城，又冤了一个人。</p>${confession}`;
+  ui(`<p class="kicker">${t[2]}</p>
+    <h1 class="brush">${t[0]}<span>${t[1]}</span></h1>
+    ${head}
+    <div class="letter" style="border-color:var(--seal)"><b>黄雀 · ${mole.emoji} ${mole.name}</b><br><span class="muted" style="font-size:14px">${MOTIVES[G.mole]}</span></div>
+    ${tail}
+    <p class="center muted" style="font-size:13px">黄雀每局随机 · 本局跑了 ${SEGS.reduce((a,s)=>a+s.dist,0)} 米老街</p>
+    <div class="center"><button onclick="restart()">🔄 再跑一局</button></div>`);
+}
+window.restart=function(){ title(); };
+
+/* ================= UI ================= */
+function ui(html){ $('ui').innerHTML=`<div class="sheet">${html}</div>`; $('ui').style.display='block'; $('ui').scrollTop=0; }
+function hideUI(){ $('ui').style.display='none'; }
+function title(){
+  newRun(); G.mode='menu';
+  $('hud').style.display='none'; $('pad').style.display='none';
+  ui(`<p class="kicker">奔跑吧 · 城市实景剧本杀 · 3D跑酷版</p>
+    <h1 class="brush">黄雀<span>在后</span>·全城飞驰</h1>
+    <p>百年老字号"德昌号"的老掌柜临终设局：六个人、五个赛段、一整条老街。<br>
+    你是调查员<b>白一鸣</b>——跑赢每一段，解开二十年前的悬案，然后在终局的<b class="seal-t">撕名牌追逐战</b>里，亲手抓住那只混在队伍里的黄雀。</p>
+    <p class="muted" style="font-size:14px">🐦 黄雀每局随机 · 跑步时留意队友的小动作，它们会出现在赛段结算里。</p>
+    ${keysHelp()}
+    <p class="center"><button style="font-size:20px" onclick="nextIntro(0)">🏁 站上起跑线</button></p>`);
+}
+window.nextIntro=nextIntro; window.startSegment=startSegment; window.preFinale=preFinale;
+window.buyIntel=buyIntel; window.buyShoe=buyShoe; window.accuseMenu=accuseMenu; window.startChase=startChase;
+title();
+</script>
